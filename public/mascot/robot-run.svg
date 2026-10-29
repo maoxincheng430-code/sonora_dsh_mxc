@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <g transform="rotate(7 60 70)">
+    <ellipse cx="60" cy="107" rx="28" ry="7" fill="rgba(0,0,0,.18)" />
+    <line x1="60" y1="24" x2="60" y2="38" stroke="#7f8db0" stroke-width="4" stroke-linecap="round" />
+    <circle cx="60" cy="19" r="6" fill="#9fe6ff" />
+    <rect x="26" y="38" width="68" height="46" rx="15" fill="#cdd9f4" />
+    <rect x="35" y="48" width="50" height="26" rx="11" fill="#1b2236" />
+    <path d="M44 60 q5 -5 10 0" stroke="#6ff0d0" stroke-width="3" fill="none" stroke-linecap="round" />
+    <path d="M66 60 q5 -5 10 0" stroke="#6ff0d0" stroke-width="3" fill="none" stroke-linecap="round" />
+    <path d="M53 80 q7 4 14 0" stroke="#7f8db0" stroke-width="3" fill="none" stroke-linecap="round" />
+    <rect x="38" y="88" width="44" height="13" rx="6.5" fill="#aebcdf" />
+    <circle cx="44" cy="94.5" r="4" fill="#7f8db0" />
+    <circle cx="76" cy="94.5" r="4" fill="#7f8db0" />
+  </g>
+  <path d="M10 56 h14 M8 66 h12" stroke="#9fe6ff" stroke-width="3" stroke-linecap="round" opacity=".8" />
+  <path d="M96 30 l1.6 5 5 1.6 -5 1.6 -1.6 5 -1.6 -5 -5 -1.6 5 -1.6z" fill="#9fe6ff" />
+</svg>

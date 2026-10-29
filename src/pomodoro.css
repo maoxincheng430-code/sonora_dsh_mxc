@@ -1,0 +1,198 @@
+/* 番茄钟样式（类名前缀 pomodoro-）：环形进度 + 剩余时间 + 专注/休息标签 */
+.pomodoro {
+  --ring-track: rgba(184, 186, 221, 0.14);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 216px;
+  padding: 18px 20px;
+  border-radius: 22px;
+  background: rgba(16, 18, 32, 0.55);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(14px) saturate(1.15);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.35);
+  color: #f1f0f8;
+  user-select: none;
+}
+
+.pomodoro-dial {
+  position: relative;
+  width: 136px;
+  height: 136px;
+  /* 给下方绝对定位的阶段标签预留空间 */
+  margin-bottom: 26px;
+}
+
+.pomodoro-ring {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pomodoro-track {
+  fill: none;
+  stroke: var(--ring-track);
+  stroke-width: 7;
+}
+
+.pomodoro-progress {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-dasharray: 326.7 326.7;
+  transition: stroke-dasharray 0.3s linear;
+}
+
+/* 休息阶段进度环换薄荷绿 */
+.pomodoro-phase-rest .pomodoro-progress {
+  stroke: var(--mint);
+}
+
+.pomodoro-time {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 阶段标签放在圆环正下方居中（原来与时间一起挤在 grid 里导致错位） */
+.pomodoro-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -26px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 3px;
+  transition: color 0.3s ease;
+}
+
+.pomodoro-phase-work .pomodoro-label {
+  color: var(--accent);
+}
+
+.pomodoro-phase-rest .pomodoro-label {
+  color: var(--mint);
+}
+
+.pomodoro-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.pomodoro-start {
+  padding: 9px 26px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--mint));
+  color: #0b0e1a;
+  font-weight: 600;
+  transition: transform 0.15s ease, filter 0.2s ease;
+}
+
+.pomodoro-start:hover {
+  filter: brightness(1.08);
+}
+
+.pomodoro-start:active {
+  transform: scale(0.97);
+}
+
+.pomodoro-reset {
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.pomodoro-reset:hover {
+  color: #f1f0f8;
+  border-color: rgba(184, 186, 221, 0.3);
+}
+/* ---------- 番茄钟吉祥物：大肥鱼沿进度环奔跑 ---------- */
+.pomodoro-mascot {
+  position: absolute;
+  left: var(--mascot-x, 50%);
+  top: var(--mascot-y, 6.7%);
+  width: 30%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 3;
+  /* 位置平滑过渡：读秒时像沿着环小跑，跳到新位置也不会瞬移 */
+  transition: left 0.28s linear, top 0.28s linear;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
+  will-change: left, top;
+}
+
+.pomodoro-mascot-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform-origin: 50% 72%;
+  transform: scaleX(var(--mascot-face, 1));
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 奔跑：上下小跳 + 轻微压扁拉伸 */
+.pomodoro-mascot.is-running .pomodoro-mascot-img {
+  animation: pomodoro-mascot-bob 0.42s ease-in-out infinite;
+}
+
+/* 休息：慢呼吸 */
+.pomodoro-mascot.is-resting .pomodoro-mascot-img {
+  animation: pomodoro-mascot-breathe 2.8s ease-in-out infinite;
+}
+
+/* 阶段完成：原地蹦三下 */
+.pomodoro-mascot.is-celebrate .pomodoro-mascot-img {
+  animation: pomodoro-mascot-hop 0.5s ease-in-out 3;
+}
+
+@keyframes pomodoro-mascot-bob {
+  0%, 100% { translate: 0 0; scale: 1 1; }
+  50% { translate: 0 -9%; scale: 0.97 1.04; }
+}
+
+@keyframes pomodoro-mascot-breathe {
+  0%, 100% { scale: 1 1; }
+  50% { scale: 1.02 0.98; }
+}
+
+@keyframes pomodoro-mascot-hop {
+  0%, 100% { translate: 0 0; }
+  40% { translate: 0 -26%; }
+  70% { translate: 0 -6%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pomodoro-mascot,
+  .pomodoro-mascot-img {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* 专注页侧栏的「今日总学习时长」比普通统计更突出 */
+.focus-stat-total {
+  margin: 2px 0 4px !important;
+  font-size: 13px !important;
+  color: #d7d9ee !important;
+  letter-spacing: 0.5px;
+}
+.focus-stat-total strong {
+  margin-left: 4px;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}

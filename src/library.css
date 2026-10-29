@@ -1,0 +1,702 @@
+/* 曲库目录抽屉。新样式集中在这里，不复用 style.css 末尾的旧 .library-* 规则。 */
+
+/* ---------- 播放器里的曲库入口 ---------- */
+.track-text .upload-link {
+  display: inline-flex;
+  vertical-align: middle;
+}
+.track-text .library-open.catalog-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  margin: 0 0 0 10px;
+  padding: 3px 9px;
+  vertical-align: middle;
+  color: #c9baff;
+  background: rgba(181, 160, 255, 0.1);
+  border: 1px solid rgba(181, 160, 255, 0.32);
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1.2;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+}
+.track-text .library-open.catalog-open:hover {
+  color: #f2edff;
+  background: rgba(181, 160, 255, 0.2);
+  border-color: rgba(181, 160, 255, 0.55);
+}
+.track-text .catalog-open-icon {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+}
+.track-text .catalog-open-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ---------- 抽屉容器 ---------- */
+.library-drawer.catalog-drawer {
+  box-sizing: border-box;
+  position: fixed;
+  inset: 0 0 0 auto;
+  margin: 0;
+  width: min(460px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: 0;
+  color: #f1f0ff;
+  background:
+    radial-gradient(120% 55% at 100% 0%, rgba(181, 160, 255, 0.16), transparent 62%),
+    radial-gradient(90% 50% at 0% 100%, rgba(140, 219, 201, 0.08), transparent 58%),
+    linear-gradient(180deg, #121528 0%, #0c0f1c 62%, #0a0d18 100%);
+  border: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: -30px 0 90px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  animation: catalog-slide-in 0.28s cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+.library-drawer.catalog-drawer::backdrop {
+  background: rgba(4, 6, 12, 0.55);
+  backdrop-filter: blur(6px);
+}
+.library-drawer.catalog-drawer .catalog-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.catalog-drawer [hidden] {
+  display: none !important;
+}
+.catalog-drawer :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- 标题区 ---------- */
+.catalog-drawer .catalog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+  padding: 26px 24px 0;
+}
+.catalog-drawer .catalog-heading {
+  min-width: 0;
+}
+.catalog-drawer .catalog-kicker {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--mint);
+  opacity: 0.75;
+}
+.catalog-drawer .catalog-heading h2 {
+  margin: 8px 0 4px;
+  font-size: 25px;
+  font-weight: 550;
+  letter-spacing: 1px;
+}
+.catalog-drawer .catalog-subtitle {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #8f93ad;
+}
+.catalog-drawer .catalog-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  padding: 0 0 3px;
+  color: #b9b7cc;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 24px;
+  line-height: 1;
+  transition: 0.18s;
+}
+.catalog-drawer .catalog-close:hover {
+  color: #fff;
+  background: rgba(181, 160, 255, 0.16);
+  border-color: rgba(181, 160, 255, 0.4);
+}
+
+/* ---------- 统计行 ---------- */
+.catalog-drawer .catalog-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  flex-shrink: 0;
+  margin: 18px 24px 0;
+}
+.catalog-drawer .catalog-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012));
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.catalog-drawer .catalog-stat strong {
+  overflow: hidden;
+  color: #efeaff;
+  font-size: 16px;
+  font-weight: 560;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.catalog-drawer .catalog-stat:first-child strong {
+  color: var(--accent);
+}
+.catalog-drawer .catalog-stat span {
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  color: #7f849d;
+}
+
+/* ---------- 工具栏 ---------- */
+.catalog-drawer .catalog-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  flex-shrink: 0;
+  margin: 16px 24px 0;
+}
+.catalog-drawer .catalog-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.catalog-drawer .catalog-field-icon {
+  position: absolute;
+  left: 12px;
+  width: 14px;
+  height: 14px;
+  color: #7d829c;
+  pointer-events: none;
+}
+.catalog-drawer .catalog-search input {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px 0 34px;
+  color: #f1f0fa;
+  background: rgba(9, 11, 20, 0.65);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.catalog-drawer .catalog-search input::placeholder {
+  color: #666b84;
+}
+.catalog-drawer .catalog-search input:focus {
+  border-color: rgba(181, 160, 255, 0.55);
+  box-shadow: 0 0 0 3px rgba(181, 160, 255, 0.12);
+}
+.catalog-drawer .catalog-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.catalog-drawer .catalog-sort {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.catalog-drawer .catalog-sort select {
+  height: 38px;
+  padding: 0 27px 0 30px;
+  color: #d9d6ea;
+  background: rgba(9, 11, 20, 0.65);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+}
+.catalog-drawer .catalog-sort::after {
+  content: '▾';
+  position: absolute;
+  right: 11px;
+  color: #7d829c;
+  font-size: 10px;
+  pointer-events: none;
+}
+.catalog-drawer .catalog-import {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 15px;
+  color: #1c1830;
+  background: linear-gradient(135deg, #c7b6f6, #9f8be4);
+  border: 0;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  transition: filter 0.18s, box-shadow 0.18s;
+}
+.catalog-drawer .catalog-import svg {
+  width: 14px;
+  height: 14px;
+}
+.catalog-drawer .catalog-import:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 24px rgba(181, 160, 255, 0.35);
+}
+.catalog-drawer .catalog-import:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+.catalog-drawer .catalog-import.is-busy {
+  animation: catalog-pulse 1s infinite;
+}
+
+/* ---------- 提示 / 状态 ---------- */
+.catalog-drawer .catalog-notice {
+  flex-shrink: 0;
+  margin: 12px 24px 0;
+  padding: 9px 12px;
+  color: #aee9dc;
+  background: rgba(140, 219, 201, 0.08);
+  border: 1px solid rgba(140, 219, 201, 0.25);
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.catalog-drawer .catalog-status {
+  flex-shrink: 0;
+  margin: 14px 24px 8px;
+  color: #8f93ad;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+.catalog-drawer .catalog-status.is-error {
+  color: #ffbaba;
+}
+
+/* ---------- 歌曲列表 ---------- */
+.catalog-drawer .catalog-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 2px 18px 20px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(181, 160, 255, 0.3) transparent;
+}
+.catalog-drawer .catalog-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.catalog-drawer .catalog-scroll::-webkit-scrollbar-thumb {
+  background: rgba(181, 160, 255, 0.24);
+  border-radius: 999px;
+}
+.catalog-drawer .catalog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.catalog-drawer .catalog-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  transition: background 0.18s, border-color 0.18s;
+}
+.catalog-drawer .catalog-row:hover {
+  background: rgba(181, 160, 255, 0.06);
+  border-color: rgba(181, 160, 255, 0.24);
+}
+.catalog-drawer .catalog-row.active {
+  background: linear-gradient(120deg, rgba(181, 160, 255, 0.16), rgba(140, 219, 201, 0.06));
+  border-color: rgba(181, 160, 255, 0.45);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.catalog-drawer .catalog-song {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 6px;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+.catalog-drawer .catalog-art {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  color: #b1a0d1;
+  background: linear-gradient(140deg, rgba(104, 83, 155, 0.35), rgba(47, 114, 117, 0.22));
+  border: 1px solid rgba(181, 160, 255, 0.22);
+  border-radius: 10px;
+}
+.catalog-drawer .catalog-art svg {
+  width: 18px;
+  height: 18px;
+}
+.catalog-drawer .catalog-song-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.catalog-drawer .catalog-song-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.catalog-drawer .catalog-song-title {
+  overflow: hidden;
+  color: #eceaf8;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.catalog-drawer .catalog-current {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  color: var(--mint);
+  background: rgba(140, 219, 201, 0.14);
+  border: 1px solid rgba(140, 219, 201, 0.35);
+  border-radius: 999px;
+  font-size: 9px;
+  letter-spacing: 0.6px;
+}
+.catalog-drawer .catalog-song-artist {
+  overflow: hidden;
+  color: #9a99b3;
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.catalog-drawer .catalog-song-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 1px;
+  color: #6f748d;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.catalog-drawer .catalog-song-meta span {
+  white-space: nowrap;
+}
+.catalog-drawer .catalog-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.catalog-drawer .catalog-action,
+.catalog-drawer .catalog-delete {
+  padding: 5px 9px;
+  color: #9a99b3;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  transition: 0.18s;
+}
+.catalog-drawer .catalog-action:hover {
+  color: #e7e2fb;
+  background: rgba(181, 160, 255, 0.1);
+  border-color: rgba(181, 160, 255, 0.35);
+}
+.catalog-drawer .catalog-delete {
+  color: #d9a6a6;
+}
+.catalog-drawer .catalog-delete:hover {
+  color: #ffd1d1;
+  background: rgba(255, 155, 155, 0.1);
+  border-color: rgba(255, 155, 155, 0.35);
+}
+
+/* ---------- 行内重命名 ---------- */
+.catalog-drawer .catalog-rename {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  background: rgba(140, 219, 201, 0.06);
+  border: 1px solid rgba(140, 219, 201, 0.35);
+  border-radius: 12px;
+}
+.catalog-drawer .catalog-rename-label {
+  flex-basis: 100%;
+  color: var(--mint);
+  font-size: 9px;
+  letter-spacing: 2px;
+  opacity: 0.8;
+}
+.catalog-drawer .catalog-rename-input {
+  flex: 1;
+  min-width: 110px;
+  height: 34px;
+  padding: 0 10px;
+  color: #f2f0fb;
+  background: rgba(6, 8, 16, 0.8);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 13px;
+  outline: none;
+}
+.catalog-drawer .catalog-rename-input:focus {
+  border-color: rgba(140, 219, 201, 0.6);
+  box-shadow: 0 0 0 3px rgba(140, 219, 201, 0.12);
+}
+.catalog-drawer .catalog-rename-actions {
+  display: flex;
+  gap: 6px;
+}
+.catalog-drawer .catalog-rename-save {
+  height: 34px;
+  padding: 0 14px;
+  color: #0c1a18;
+  background: var(--mint);
+  border: 0;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.catalog-drawer .catalog-rename-cancel {
+  height: 34px;
+  padding: 0 12px;
+  color: #b3b1c6;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 12px;
+}
+.catalog-drawer .catalog-rename.is-pending {
+  opacity: 0.65;
+}
+
+/* ---------- 空状态 ---------- */
+.catalog-drawer .catalog-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 54px 24px;
+  text-align: center;
+}
+.catalog-drawer .catalog-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  color: #9d8fd6;
+  background: radial-gradient(circle at 30% 20%, rgba(181, 160, 255, 0.16), transparent 70%);
+  border: 1px dashed rgba(181, 160, 255, 0.35);
+  border-radius: 50%;
+}
+.catalog-drawer .catalog-empty-icon svg {
+  width: 24px;
+  height: 24px;
+}
+.catalog-drawer .catalog-empty strong {
+  color: #cbc8dd;
+  font-size: 14px;
+  font-weight: 500;
+}
+.catalog-drawer .catalog-empty span:not(.catalog-empty-icon) {
+  color: #7d829c;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+/* ---------- 页脚 ---------- */
+.catalog-drawer .catalog-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 14px 24px calc(16px + env(safe-area-inset-bottom));
+  color: #6d728b;
+  background: rgba(6, 8, 15, 0.5);
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.catalog-drawer .catalog-footer span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.catalog-drawer .catalog-footer svg {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+}
+.catalog-drawer .catalog-footer span:last-child {
+  padding-left: 17px;
+  color: #5a5f76;
+  letter-spacing: 0.5px;
+}
+
+@keyframes catalog-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes catalog-pulse {
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* ---------- 移动端全屏 ---------- */
+@media (max-width: 760px) {
+  .library-drawer.catalog-drawer {
+    inset: 0;
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-left: 0;
+  }
+  .catalog-drawer .catalog-header {
+    padding: calc(18px + env(safe-area-inset-top)) 18px 0;
+  }
+  .catalog-drawer .catalog-heading h2 {
+    font-size: 22px;
+  }
+  .catalog-drawer .catalog-stats {
+    gap: 8px;
+    margin: 14px 18px 0;
+  }
+  .catalog-drawer .catalog-stat {
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+  .catalog-drawer .catalog-stat strong {
+    font-size: 14px;
+  }
+  .catalog-drawer .catalog-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+    margin: 12px 18px 0;
+  }
+  .catalog-drawer .catalog-tools {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .catalog-drawer .catalog-sort select {
+    width: 100%;
+  }
+  .catalog-drawer .catalog-notice {
+    margin: 10px 18px 0;
+  }
+  .catalog-drawer .catalog-status {
+    margin: 12px 18px 6px;
+  }
+  .catalog-drawer .catalog-scroll {
+    padding: 2px 14px 16px 18px;
+  }
+  .catalog-drawer .catalog-footer {
+    padding: 12px 18px calc(14px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 460px) {
+  .catalog-drawer .catalog-row {
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 9px;
+  }
+  .catalog-drawer .catalog-song {
+    flex: 1 1 100%;
+    gap: 10px;
+  }
+  .catalog-drawer .catalog-art {
+    width: 36px;
+    height: 36px;
+  }
+  .catalog-drawer .catalog-actions {
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 8px;
+    width: 100%;
+    padding: 2px 2px 0;
+  }
+  .catalog-drawer .catalog-actions button {
+    padding: 8px 14px;
+    border: 1px solid var(--line);
+    font-size: 11px;
+  }
+}
+
+/* 矮屏幕（如横屏手机）压缩留白，保证列表仍有可滚动区域 */
+@media (max-height: 640px) {
+  .catalog-drawer .catalog-header {
+    padding-top: 14px;
+  }
+  .catalog-drawer .catalog-heading h2 {
+    margin: 6px 0 2px;
+    font-size: 21px;
+  }
+  .catalog-drawer .catalog-stats {
+    margin-top: 10px;
+  }
+  .catalog-drawer .catalog-stat {
+    padding: 8px 12px;
+  }
+  .catalog-drawer .catalog-toolbar {
+    margin-top: 10px;
+  }
+  .catalog-drawer .catalog-status {
+    margin-top: 8px;
+    margin-bottom: 4px;
+  }
+  .catalog-drawer .catalog-footer {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .catalog-drawer .catalog-footer span:last-child {
+    display: none;
+  }
+}

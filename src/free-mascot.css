@@ -1,0 +1,285 @@
+/* 「逃出升天」独立桌宠：脱离歌词面板，在页面上自由活动。
+   参考 dsh-pet 的桌宠交互：拖动移动、右键菜单、双击说话、空闲漂移。 */
+
+.free-mascot {
+  position: fixed;
+  left: var(--free-x, 0px);
+  top: var(--free-y, 0px);
+  z-index: 75;
+  /* 体型跟着歌词字号三档变（小肥鱼 / 肥鱼 / 大肥鱼），由 JS 写入 --pet-w / --pet-h */
+  width: var(--pet-w, 76px);
+  height: var(--pet-h, 88px);
+  pointer-events: none;
+  transition: opacity 0.28s ease, width 0.22s ease, height 0.22s ease;
+}
+
+.free-mascot[hidden] {
+  display: none;
+}
+
+.free-mascot-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+  cursor: grab;
+  transform-origin: 50% 92%;
+  animation: free-mascot-float 3.8s ease-in-out infinite;
+  -webkit-user-select: none;
+  user-select: none;
+  outline: none;
+}
+
+.free-mascot-body:active,
+.free-mascot-body.is-dragging {
+  cursor: grabbing;
+}
+
+.free-mascot-body:focus-visible {
+  outline: 2px solid rgba(200, 185, 255, 0.8);
+  outline-offset: 6px;
+  border-radius: 14px;
+}
+
+.free-mascot-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 20px rgba(4, 6, 18, 0.6));
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* 图片加载失败时用 emoji 兜底 */
+.free-mascot-body.is-fallback .free-mascot-img {
+  display: none;
+}
+
+.free-mascot-body.is-fallback::after {
+  content: '🐟';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 46px;
+  pointer-events: none;
+}
+
+/* 空闲漂浮 */
+@keyframes free-mascot-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -6px;
+  }
+}
+
+/* 拖动时轻微放大，给出「被抓起来」的反馈 */
+.free-mascot-body.is-dragging {
+  animation: none;
+  scale: 1.06;
+  transition: scale 0.18s ease;
+}
+
+/* 台词气泡 */
+.free-mascot-bubble {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translate(-50%, 6px);
+  width: 240px;
+  max-width: 240px;
+  padding: 7px 11px;
+  background: rgba(14, 12, 28, 0.97);
+  border: 1px solid rgba(176, 161, 219, 0.34);
+  border-radius: 12px;
+  box-shadow: 0 10px 26px rgba(3, 5, 14, 0.6);
+  backdrop-filter: blur(10px);
+  color: #e6e1f6;
+  font-size: 11.5px;
+  line-height: 1.55;
+  white-space: normal;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.free-mascot-bubble.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* 右键菜单 */
+.free-mascot-menu {
+  position: fixed;
+  width: 208px;
+  max-width: calc(100vw - 16px);
+  box-sizing: border-box;
+  padding: 10px;
+  background: rgba(12, 11, 24, 0.98);
+  border: 1px solid rgba(176, 161, 219, 0.3);
+  border-radius: 14px;
+  box-shadow: 0 18px 44px rgba(3, 5, 14, 0.66);
+  backdrop-filter: blur(16px);
+  pointer-events: auto;
+  z-index: 90;
+}
+
+.free-mascot-menu[hidden] {
+  display: none;
+}
+
+.free-mascot-menu-title {
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #d5cfe8;
+}
+
+.free-mascot-menu-group {
+  margin-bottom: 8px;
+}
+
+.free-mascot-menu-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #8f89a8;
+}
+
+.free-mascot-menu-row {
+  display: flex;
+  gap: 4px;
+}
+
+.free-mascot-menu-choice {
+  flex: 1 1 auto;
+  padding: 4px 8px;
+  font-size: 10.5px;
+  color: #b8b2cc;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.free-mascot-menu-choice:hover {
+  color: #fff;
+  background: rgba(181, 160, 255, 0.16);
+}
+
+.free-mascot-menu-choice.is-active {
+  color: #1c1733;
+  background: linear-gradient(118deg, #d9ccff 0%, #b5a0ff 52%, #8fd0f2 100%);
+  border-color: transparent;
+}
+
+.free-mascot-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.free-mascot-color {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.free-mascot-color:hover {
+  transform: scale(1.14);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.35);
+}
+
+.free-mascot-menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(176, 161, 219, 0.16);
+}
+
+.free-mascot-menu-action {
+  padding: 5px 8px;
+  font-size: 10.5px;
+  text-align: left;
+  color: #c3bcd8;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.free-mascot-menu-action:hover {
+  color: #fff;
+  background: rgba(181, 160, 255, 0.16);
+}
+
+/* 「逃出升天」按钮：贴在角色右侧（左侧是「换一句」，互不遮挡） */
+.mascot-pet-escape {
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 52px;
+  transform: none;
+  padding: 1px 8px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: #b9d0ff;
+  background: rgba(20, 30, 52, 0.9);
+  border: 1px solid rgba(110, 160, 255, 0.42);
+  border-radius: 999px;
+  cursor: pointer;
+  pointer-events: auto;
+  white-space: nowrap;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.mascot-pet-escape:hover {
+  color: #eaf2ff;
+  border-color: rgba(120, 175, 255, 0.72);
+  background: rgba(30, 48, 82, 0.94);
+}
+
+.mascot-pet-escape:focus-visible {
+  outline: 2px solid var(--mint, #8cdbc9);
+  outline-offset: 2px;
+}
+
+/* 减少动态效果：停掉漂浮 */
+@media (prefers-reduced-motion: reduce) {
+  .free-mascot-body {
+    animation: none;
+  }
+}
+
+/* 移动端：小一点，菜单别超出屏幕 */
+@media (max-width: 760px) {
+  .free-mascot {
+    width: 62px;
+    height: 72px;
+  }
+
+  .free-mascot-bubble {
+    width: 190px;
+    max-width: 190px;
+    font-size: 11px;
+  }
+
+  .free-mascot-menu {
+    min-width: 160px;
+  }
+}

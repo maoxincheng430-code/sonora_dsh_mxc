@@ -1,0 +1,103 @@
+/* 顶部导航栏样式（类名前缀 navbar-）：半透明毛玻璃，与深紫主题一致。
+ * 默认不自动挂载（不 attach 即不可见），由 Lead 决定是否常驻；
+ * attach 后可用 show()/hide()/setVisible() 控制可见性。 */
+.navbar {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60; /* 高于 #app(1)、低于光标拖尾(999)，不拦截页面其他交互 */
+  pointer-events: auto;
+}
+
+.navbar-hidden {
+  display: none !important;
+}
+
+.navbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(17, 19, 33, 0.62);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.38);
+}
+
+/* 形态一（默认）：pill 横排，含文字标签 */
+.navbar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.22s ease, color 0.22s ease, transform 0.12s ease;
+}
+
+.navbar-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #f1f0f8;
+}
+
+.navbar-item:active {
+  transform: scale(0.96);
+}
+
+.navbar-item.navbar-active {
+  color: #0b0e1a;
+  background: linear-gradient(135deg, var(--accent), var(--mint));
+}
+
+.navbar-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 11px;
+  background: rgba(181, 160, 255, 0.16);
+  color: var(--accent);
+}
+
+.navbar-item.navbar-active .navbar-badge {
+  background: rgba(11, 14, 26, 0.22);
+  color: #0b0e1a;
+}
+
+/* 形态二：图标居中（隐藏文字，按钮等宽方形，适合纯图标导航） */
+.navbar-variant-icon .navbar-inner {
+  gap: 6px;
+}
+
+.navbar-variant-icon .navbar-item {
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+}
+
+.navbar-variant-icon .navbar-label {
+  display: none;
+}
+
+/* 窄屏：pill 形态自动退化为纯图标，避免拥挤 */
+@media (max-width: 640px) {
+  .navbar {
+    top: 12px;
+  }
+  .navbar-variant-pill .navbar-label {
+    display: none;
+  }
+  .navbar-variant-pill .navbar-item {
+    justify-content: center;
+    padding: 10px;
+  }
+}

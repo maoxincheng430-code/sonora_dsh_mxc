@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "note": "扩展桌宠包：图片素材的版权归原作者，仅限个人非商业使用；详见 ai/NOTICE.md。不要把自己无权分发的素材提交到公开仓库。",
+  "packs": [
+    {
+      "id": "gpt-sister",
+      "name": "GPT 小修女",
+      "desc": "CAFÉ STILE 系列",
+      "states": {
+        "idle": "mascot/ai/gpt-sister.png"
+      }
+    },
+    {
+      "id": "claude-chan",
+      "name": "Claude 橙发",
+      "desc": "CAFÉ STILE 系列",
+      "states": {
+        "idle": "mascot/ai/claude-chan.png"
+      }
+    },
+    {
+      "id": "deepseek-chan",
+      "name": "DeepSeek 蓝鲸",
+      "desc": "CAFÉ STILE 系列",
+      "states": {
+        "idle": "mascot/ai/deepseek-chan.png"
+      }
+    },
+    {
+      "id": "gemini-chan",
+      "name": "Gemini 星猫",
+      "desc": "CAFÉ STILE 系列",
+      "states": {
+        "idle": "mascot/ai/gemini-chan.png"
+      }
+    },
+    {
+      "id": "doubao",
+      "name": "豆包",
+      "desc": "抖音豆包 3D 形象",
+      "states": {
+        "idle": "mascot/ai/doubao.png"
+      }
+    },
+    {
+      "id": "glm-logo",
+      "name": "GLM 标志",
+      "desc": "智谱 GLM",
+      "states": {
+        "idle": "mascot/ai/glm-logo.png"
+      }
+    },
+    {
+      "id": "kimi-chan",
+      "name": "Kimi 交响",
+      "desc": "CAFÉ STILE 系列",
+      "states": {
+        "idle": "mascot/ai/kimi-chan.png"
+      }
+    },
+    {
+      "id": "qwen-chan",
+      "name": "Qwen 折扇",
+      "desc": "CAFÉ STILE 系列",
+      "states": {
+        "idle": "mascot/ai/qwen-chan.png"
+      }
+    },
+    {
+      "id": "grok",
+      "name": "Grok 甜心",
+      "desc": "CAFÉ STILE 系列",
+      "states": {
+        "idle": "mascot/ai/grok.png"
+      }
+    },
+    {
+      "id": "qds-caibufei",
+      "name": "Q版肥鱼·才不肥",
+      "desc": "蓝色大肥鱼 Q版二创",
+      "states": {
+        "idle": "mascot/ai-q/qds-caibufei.png"
+      }
+    },
+    {
+      "id": "qds-haokun",
+      "name": "Q版肥鱼·好困",
+      "desc": "蓝色大肥鱼 Q版二创",
+      "states": {
+        "idle": "mascot/ai-q/qds-haokun.png"
+      }
+    },
+    {
+      "id": "qds-xingxing",
+      "name": "Q版肥鱼·星星眼",
+      "desc": "蓝色大肥鱼 Q版二创",
+      "states": {
+        "idle": "mascot/ai-q/qds-xingxing.png"
+      }
+    },
+    {
+      "id": "qgpt-bailong",
+      "name": "Q版白龙娘",
+      "desc": "GPT 娘 Q版二创",
+      "states": {
+        "idle": "mascot/ai-q/qgpt-bailong.png"
+      }
+    }
+  ]
+}

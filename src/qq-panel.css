@@ -1,0 +1,398 @@
+/* QQ 音乐登录面板（样式与歌词面板保持一致的深色毛玻璃风格） */
+.qq-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  background: #05060acc;
+  backdrop-filter: blur(10px);
+}
+.qq-backdrop[hidden] {
+  display: none;
+}
+.qq-panel {
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ffffff1a;
+  border-radius: 18px;
+  background: linear-gradient(160deg, #1a1a2b, #101320);
+  box-shadow: 0 30px 90px #00000080;
+  color: #e8e9f2;
+}
+.qq-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 12px;
+}
+.qq-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+}
+.qq-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid #ffffff1a;
+  background: transparent;
+  color: #c9cad8;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.qq-close:hover {
+  background: #ffffff14;
+  color: #fff;
+}
+.qq-body {
+  padding: 0 20px 20px;
+  overflow-y: auto;
+}
+.qq-status {
+  margin: 0 0 12px;
+  min-height: 18px;
+  font-size: 12px;
+  color: #b9b2ff;
+}
+.qq-qr {
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  background: #fff;
+}
+.qq-qr img {
+  display: block;
+  width: 180px;
+  height: 180px;
+}
+.qq-button {
+  width: 100%;
+  padding: 10px 14px;
+  margin: 0 0 10px;
+  border-radius: 11px;
+  border: 1px solid #ffffff1f;
+  background: #ffffff0d;
+  color: #e8e9f2;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.18s;
+}
+.qq-button:hover {
+  background: #ffffff1a;
+}
+.qq-button-primary {
+  border-color: #8b75ff55;
+  background: #8b75ff22;
+  color: #d9d2ff;
+}
+.qq-tip,
+.qq-hint {
+  margin: 0 0 12px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #8e90a6;
+}
+.qq-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 12px;
+  font-size: 11px;
+  color: #7d7f95;
+}
+.qq-divider::before,
+.qq-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #ffffff1a;
+}
+.qq-cookie {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  border: 1px solid #ffffff1a;
+  background: #0c0e18;
+  color: #d8d9e6;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.qq-user {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-size: 12px;
+  color: #b9b2ff;
+}
+.qq-link {
+  border: 0;
+  background: transparent;
+  color: #8e90a6;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.qq-search {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.qq-search .qq-button {
+  width: auto;
+  margin: 0;
+  white-space: nowrap;
+}
+.qq-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 11px;
+  border: 1px solid #ffffff1a;
+  background: #0c0e18;
+  color: #e8e9f2;
+  font-size: 13px;
+}
+.qq-input:focus,
+.qq-cookie:focus {
+  outline: none;
+  border-color: #8b75ff88;
+}
+.qq-results {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.qq-song {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  border: 1px solid #ffffff10;
+  background: #ffffff08;
+  color: #e8e9f2;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.qq-song:hover {
+  background: #ffffff14;
+  border-color: #8b75ff44;
+}
+.qq-song.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+.qq-song-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qq-song-singer {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #8e90a6;
+}
+.qq-empty {
+  padding: 14px 4px;
+  font-size: 12px;
+  color: #8e90a6;
+}
+
+/* 登录通道选择（手机 QQ / 微信 / QQ 音乐 App） */
+.qq-channels {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+.qq-channel {
+  flex: 1;
+  padding: 8px 6px;
+  border-radius: 10px;
+  border: 1px solid #ffffff1a;
+  background: #ffffff08;
+  color: #a9abbd;
+  font-size: 12px;
+  cursor: pointer;
+  transition: 0.18s;
+}
+.qq-channel:hover {
+  background: #ffffff14;
+}
+.qq-channel.active {
+  border-color: #8b75ff88;
+  background: #8b75ff22;
+  color: #d9d2ff;
+}
+
+/* 播放失败提示 + 本地文件兜底 */
+.qq-error {
+  margin: 0 0 10px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 110, 110, 0.35);
+  background: rgba(255, 80, 80, 0.09);
+  color: #ffb4b4;
+  font-size: 11.5px;
+  line-height: 1.65;
+}
+
+.qq-error[hidden] {
+  display: none;
+}
+
+.qq-local {
+  margin-top: 2px;
+  color: #a9abbd;
+  border-style: dashed;
+}
+
+/* 登录面板顶部的用途说明：比普通 qq-hint 更醒目一点 */
+.qq-login-purpose {
+  margin: -2px 0 12px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid rgba(139, 117, 255, 0.22);
+  background: rgba(139, 117, 255, 0.07);
+  color: #b9b2ff;
+  line-height: 1.65;
+}
+
+/* ---------- 在线音乐面板：音源切换 ---------- */
+.online-sources {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(181, 160, 255, 0.16);
+}
+
+.online-source {
+  flex: 1;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #9d97b8;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.online-source:hover {
+  color: #fff;
+  background: rgba(181, 160, 255, 0.14);
+}
+
+.online-source.is-active {
+  color: #1c1733;
+  background: linear-gradient(120deg, #d6c9ff, #a8dcff);
+}
+
+.online-panel .qq-head h2 {
+  letter-spacing: 0.02em;
+}
+
+/* ---------- 网易云：手动 Cookie 兜底 ---------- */
+.online-cookie-toggle {
+  margin-top: 8px;
+  font-size: 11.5px;
+}
+
+.online-cookie {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.online-cookie-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(181, 160, 255, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+  color: #e8e6ff;
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.online-cookie-input:focus {
+  outline: none;
+  border-color: rgba(168, 220, 255, 0.55);
+}
+
+/* ---------- 网易云：手机号验证码登录 ---------- */
+.online-phone-toggle {
+  margin-top: 8px;
+  font-size: 11.5px;
+}
+
+.online-phone {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.online-phone[hidden] {
+  display: none;
+}
+
+.online-phone .qq-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 34px;
+}
+
+.online-phone-code {
+  display: flex;
+  gap: 8px;
+}
+
+.online-phone-code .qq-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.online-phone-code .qq-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.online-phone > .qq-button {
+  justify-self: start;
+}
+
+/* 验证码输入行：qq-button 默认 width:100%，这里让按钮按内容宽度，输入框才能撑开 */
+.online-phone-code .qq-button {
+  width: auto;
+}
+
+.online-phone > .qq-button {
+  width: auto;
+  justify-self: start;
+}

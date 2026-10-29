@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <ellipse cx="60" cy="108" rx="30" ry="6" fill="rgba(0,0,0,.18)" />
+  <!-- 喷水 -->
+  <path d="M60 20 q-4 -10 0 -16 q4 6 0 16" fill="#9fe6ff" opacity=".9" />
+  <circle cx="48" cy="14" r="3" fill="#9fe6ff" opacity=".8" />
+  <circle cx="72" cy="14" r="3" fill="#9fe6ff" opacity=".8" />
+  <!-- 身体 -->
+  <path d="M60 24c-22 0-36 15-36 36 0 20 16 34 36 34s36-14 36-34c0-21-14-36-36-36z" fill="#5b8dff" />
+  <path d="M60 24c-22 0-36 15-36 36 0 6 1 11 3 16 5-20 18-30 33-30s28 10 33 30c2-5 3-10 3-16 0-21-14-36-36-36z" fill="#7fa8ff" opacity=".7" />
+  <!-- 肚子 -->
+  <path d="M60 46c-12 0-20 9-20 20 0 11 9 19 20 19s20-8 20-19c0-11-8-20-20-20z" fill="#eaf2ff" />
+  <!-- 眼睛 -->
+  <ellipse cx="48" cy="66" rx="5.4" ry="6.4" fill="#22304f" />
+  <ellipse cx="72" cy="66" rx="5.4" ry="6.4" fill="#22304f" />
+  <circle cx="50" cy="63.5" r="1.9" fill="#fff" />
+  <circle cx="74" cy="63.5" r="1.9" fill="#fff" />
+  <ellipse cx="38" cy="80" rx="5" ry="3" fill="#ffb3a7" opacity=".8" />
+  <ellipse cx="82" cy="80" rx="5" ry="3" fill="#ffb3a7" opacity=".8" />
+  <path d="M54 84 q6 5 12 0" stroke="#22304f" stroke-width="3" fill="none" stroke-linecap="round" />
+  <!-- 鳍 -->
+  <path d="M24 72 q-8 6 -2 14 q6 -4 8 -10z" fill="#4b78e8" />
+  <path d="M96 72 q8 6 2 14 q-6 -4 -8 -10z" fill="#4b78e8" />
+</svg>

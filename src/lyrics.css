@@ -1,0 +1,1917 @@
+/* SONORA 歌词层（独立组件样式）。参考 Folia：歌词是画面的主角——
+   当前行大字居中、逐行向上推进、上下渐隐、有字距呼吸与光晕质感；曲风切换时
+   字体 / 渐变 / 背景 / 动效 / 排版整套变化。
+   class 前缀统一 lyrics-*；曲风变量（--lyrics-font/--lyrics-gradient/--lyrics-background/
+   --lyrics-accent/--lyrics-weight/--lyrics-tracking）由组件从 MOOD_STYLES 注入，
+   这里只消费变量，不写死曲风细节。纯 CSS 动画，无 JS 动画循环。
+   定位：top 18% 起、五行走廊约 31vh，底部落在 ~49%，1440x900 与 390x844 都不压播放器。 */
+
+.lyrics-overlay {
+  --lyrics-font: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --lyrics-weight: 600;
+  --lyrics-tracking: 0.08em;
+  --lyrics-line-height: clamp(44px, 6.2vh, 64px);
+  --lyrics-visible: 5; /* 可视走廊：前两行 + 当前行 + 后两行 */
+  --lyrics-width: min(76vw, 860px);
+
+  position: fixed;
+  top: 18%;
+  left: 50%;
+  z-index: 30;
+  width: var(--lyrics-width);
+  transform: translateX(-50%);
+  font-family: var(--lyrics-font);
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.45s ease, visibility 0.45s ease;
+}
+
+.lyrics-overlay.lyrics-hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* ---- 歌词位置：左 / 中 / 右（独立于粒子特效，只动歌词层）----
+   桌面端左侧/右侧都预留了安全区：左侧让介绍文案淡出（见文件末尾 body 规则），
+   右侧避开右侧效果面板（330px 以上的右侧留白）。位置对经典与 3D 倾斜模式都生效。 */
+.lyrics-overlay[data-position="left"] {
+  left: clamp(20px, 4vw, 72px);
+  width: min(72vw, 1000px);
+  max-width: calc(100vw - 320px);
+  transform: none;
+  text-align: left;
+  --lyrics-origin-x: 0%;
+  --lyrics-plane-y: -10deg;
+}
+
+.lyrics-overlay[data-position="right"] {
+  left: auto;
+  right: clamp(330px, 24vw, 420px);
+  width: min(72vw, 1000px);
+  max-width: calc(100vw - 320px);
+  transform: none;
+  text-align: right;
+  --lyrics-origin-x: 100%;
+  --lyrics-plane-y: 10deg;
+}
+
+.lyrics-overlay[data-position="left"] .lyrics-list {
+  align-items: flex-start;
+}
+
+.lyrics-overlay[data-position="right"] .lyrics-list {
+  align-items: flex-end;
+}
+
+/* 当前行光带跟随歌词位置对齐（左/右贴边，不再居中）。 */
+.lyrics-overlay[data-position="left"] .lyrics-line.lyrics-active::after {
+  left: 0;
+  transform-origin: left center;
+  animation-name: lyrics-underline-edge;
+}
+
+.lyrics-overlay[data-position="right"] .lyrics-line.lyrics-active::after {
+  left: auto;
+  right: 0;
+  transform-origin: right center;
+  animation-name: lyrics-underline-edge;
+}
+
+/* 背景叠加：极淡的径向光晕，叠在粒子上但不遮画面。 */
+.lyrics-backdrop {
+  position: absolute;
+  inset: -55% -18%;
+  z-index: -1;
+  border-radius: 50%;
+  background: var(
+    --lyrics-background,
+    radial-gradient(58% 90% at 50% 42%, rgba(140, 190, 255, 0.16), transparent 72%)
+  );
+  filter: blur(42px);
+  opacity: 0.75;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: lyrics-halo 11s ease-in-out infinite alternate;
+}
+
+/* 五行高的可视走廊；上下边缘渐隐（Folia 式“歌词从光里浮现又消失”）。 */
+.lyrics-stage {
+  position: relative;
+  height: calc(var(--lyrics-visible) * var(--lyrics-line-height));
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 84%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 84%, transparent 100%);
+}
+
+/* 行数超过走廊时用 transform 平移（组件只更新 --lyrics-index）。 */
+.lyrics-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: calc((var(--lyrics-visible) - 1) / 2 * var(--lyrics-line-height)) 0;
+  list-style: none;
+  transform: translateY(calc(var(--lyrics-index, 0) * -1 * var(--lyrics-line-height)));
+  transition: transform 0.72s cubic-bezier(0.22, 0.68, 0.24, 1);
+  will-change: transform;
+}
+
+.lyrics-line {
+  position: relative;
+  box-sizing: border-box;
+  max-width: 100%;
+  height: var(--lyrics-line-height);
+  padding: 0 0.5em;
+  line-height: var(--lyrics-line-height);
+  white-space: nowrap;
+  font-size: clamp(13px, 1.3vw, 16px);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: rgba(226, 232, 255, 0.4);
+  opacity: 0.34;
+  filter: blur(0.5px);
+  transition: opacity 0.55s ease, color 0.55s ease, filter 0.55s ease, font-size 0.55s ease,
+    font-weight 0.55s ease, letter-spacing 0.55s ease;
+}
+
+/* 行内文本单独一层：入场动画（淡入 + 上移 + 模糊转清晰）与退场（淡出 + 轻微上移）都在这里，
+   避免和当前行的曲风氛围动画抢同一个 animation 属性。 */
+.lyrics-text {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity 0.55s ease, transform 0.6s cubic-bezier(0.22, 0.68, 0.24, 1),
+    filter 0.6s ease;
+}
+
+/* 前一行 / 后一行：小字预显，分别轻微上移 / 下移，保持“正在推进”的方向感。 */
+.lyrics-line.lyrics-prev {
+  opacity: 0.6;
+  color: rgba(226, 232, 255, 0.66);
+  filter: blur(0.2px);
+}
+
+.lyrics-line.lyrics-prev .lyrics-text {
+  transform: translateY(-0.34em);
+  opacity: 0.85;
+}
+
+.lyrics-line.lyrics-next {
+  opacity: 0.42;
+  color: rgba(226, 232, 255, 0.52);
+  filter: blur(0.8px);
+}
+
+.lyrics-line.lyrics-next .lyrics-text {
+  transform: translateY(0.34em);
+  opacity: 0.7;
+}
+
+/* 更远的行：几乎消隐，制造纵深。 */
+.lyrics-line.lyrics-away {
+  opacity: 0.1;
+  filter: blur(3px);
+}
+
+.lyrics-line.lyrics-away .lyrics-text {
+  opacity: 0;
+}
+
+/* 当前行：大字、渐变文字、曲风排版。 */
+.lyrics-line.lyrics-active {
+  z-index: 1;
+  opacity: 1;
+  filter: none;
+  /* 字号随「小肥鱼 / 肥鱼 / 大肥鱼」三档缩放（--lyrics-scale，缺省 1）。 */
+  font-size: calc(clamp(26px, 3.6vw, 44px) * var(--lyrics-scale, 1));
+  font-weight: var(--lyrics-weight, 700);
+  letter-spacing: var(--lyrics-tracking, 0.08em);
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  background-image: var(
+    --lyrics-gradient,
+    linear-gradient(115deg, #f4f8ff 0%, #c3dcff 55%, #8fd0f2 100%)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* 当前行入场：从下方浮起、模糊转清晰。 */
+.lyrics-line.lyrics-active .lyrics-text {
+  animation: lyrics-line-in 0.68s cubic-bezier(0.2, 0.72, 0.24, 1) both;
+}
+
+/* 当前行下方的一条渐变光带，Folia 式的“正在唱这一句”落点。 */
+.lyrics-line.lyrics-active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 8%;
+  width: clamp(46px, 42%, 180px);
+  height: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, var(--lyrics-accent, #a8dcff), transparent);
+  box-shadow: 0 0 12px var(--lyrics-accent, #a8dcff);
+  opacity: 0.55;
+  pointer-events: none;
+  animation: lyrics-underline 3.6s ease-in-out infinite;
+}
+
+/* ---- 三种曲风动效（MOOD_STYLES.effect 对应的 class）：光晕呼吸 / 流光 / 雾化 ---- */
+/* 舒缓：柔光呼吸 + 字距轻微呼吸 */
+.lyrics-line.lyrics-active.lyrics-motion-glow {
+  animation: lyrics-breathe 3.8s ease-in-out infinite;
+}
+
+/* 激昂：渐变流转 + 轻微放大 */
+.lyrics-line.lyrics-active.lyrics-motion-pulse {
+  background-size: 220% 100%;
+  background-position: 0% 50%;
+  animation: lyrics-shine 2.8s ease-in-out infinite;
+}
+
+/* 忧伤：雾化流转 + 轻微漂移 */
+.lyrics-line.lyrics-active.lyrics-motion-blur {
+  animation: lyrics-mist 5.2s ease-in-out infinite;
+}
+
+@keyframes lyrics-line-in {
+  0% {
+    opacity: 0;
+    transform: translateY(0.42em);
+    filter: blur(12px);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes lyrics-underline {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: translateX(-50%) scaleX(0.82);
+  }
+  50% {
+    opacity: 0.72;
+    transform: translateX(-50%) scaleX(1);
+  }
+}
+
+@keyframes lyrics-halo {
+  from {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 0.85;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes lyrics-breathe {
+  0%,
+  100% {
+    letter-spacing: var(--lyrics-tracking, 0.08em);
+    filter: drop-shadow(0 0 8px var(--lyrics-accent, rgba(168, 220, 255, 0.5)));
+    opacity: 0.93;
+  }
+  50% {
+    letter-spacing: calc(var(--lyrics-tracking, 0.08em) + 0.03em);
+    filter: drop-shadow(0 0 24px var(--lyrics-accent, rgba(168, 220, 255, 0.85)));
+    opacity: 1;
+  }
+}
+
+@keyframes lyrics-shine {
+  0%,
+  100% {
+    letter-spacing: var(--lyrics-tracking, 0.12em);
+    background-position: 0% 50%;
+    filter: drop-shadow(0 0 10px var(--lyrics-accent, rgba(255, 196, 137, 0.4)));
+    transform: scale(1);
+  }
+  50% {
+    letter-spacing: calc(var(--lyrics-tracking, 0.12em) + 0.02em);
+    background-position: 100% 50%;
+    filter: drop-shadow(0 0 20px var(--lyrics-accent, rgba(255, 196, 137, 0.75)));
+    transform: scale(1.018);
+  }
+}
+
+@keyframes lyrics-mist {
+  0%,
+  100% {
+    letter-spacing: var(--lyrics-tracking, 0.16em);
+    transform: translateX(0) scale(1.004);
+    filter: blur(0.2px) drop-shadow(0 0 8px var(--lyrics-accent, rgba(182, 196, 232, 0.4)));
+    opacity: 0.95;
+  }
+  50% {
+    letter-spacing: calc(var(--lyrics-tracking, 0.16em) + 0.02em);
+    transform: translateX(2px) scale(1.004);
+    filter: blur(1.4px) drop-shadow(0 0 16px var(--lyrics-accent, rgba(182, 196, 232, 0.65)));
+    opacity: 1;
+  }
+}
+
+@keyframes lyrics-underline-edge {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scaleX(0.82);
+  }
+  50% {
+    opacity: 0.72;
+    transform: scaleX(1);
+  }
+}
+
+/* ---- 3D 倾斜歌词（独立于粒子特效的显示模式）----
+   整层交给 CSS 3D：stage 提供透视，list 整体倾斜，每一行再按离当前行的距离
+   后退 + 轻微旋转，形成一面朝向观者的“歌词墙”。不读写任何粒子 / WebGL 状态，
+   与曲风、粒子形态、频段敏感度等设置完全互不影响。 */
+.lyrics-overlay[data-mode="tilt3d"] {
+  --lyrics-visible: 6;
+  --lyrics-line-height: clamp(64px, 8.6vh, 92px);
+  --lyrics-width: min(56vw, 740px);
+  top: 16%;
+}
+
+/* ---- 歌词字号三档：小肥鱼 / 肥鱼 / 大肥鱼 ----
+   用 --lyrics-scale 统一缩放当前行字号，经典与 3D 倾斜模式共用；
+   3D 模式下同时放大行高与行距，避免大字号把相邻行压到一起。 */
+.lyrics-overlay[data-size="small"] {
+  --lyrics-scale: 0.82;
+}
+.lyrics-overlay[data-size="medium"] {
+  --lyrics-scale: 1;
+}
+.lyrics-overlay[data-size="large"] {
+  --lyrics-scale: 1.22;
+}
+
+.lyrics-overlay[data-mode="tilt3d"][data-size="large"] {
+  --lyrics-line-height: clamp(76px, 10.2vh, 110px);
+}
+.lyrics-overlay[data-mode="tilt3d"][data-size="small"] {
+  --lyrics-line-height: clamp(56px, 7.4vh, 80px);
+}
+
+.lyrics-overlay[data-mode="tilt3d"] .lyrics-stage {
+  perspective: clamp(660px, 78vw, 980px);
+  perspective-origin: var(--lyrics-origin-x, 50%) 46%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 15%, #000 85%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 15%, #000 85%, transparent 100%);
+}
+
+.lyrics-overlay[data-mode="tilt3d"] .lyrics-list {
+  gap: clamp(6px, 0.9vh, 12px);
+  transform: translateY(calc(-1 * var(--lyrics-shift, 0px))) rotateX(20deg)
+    rotateY(var(--lyrics-plane-y, 0deg));
+  transform-style: preserve-3d;
+  transform-origin: 50% 50%;
+  transition: transform 0.86s cubic-bezier(0.22, 0.68, 0.24, 1);
+}
+
+/* 每一行：纵深越远越暗、越模糊、越往后退（--lyrics-rel / --lyrics-depth 由组件写入）。
+   3D 模式允许长句换行，行高由内容撑开 + min-height 保证基础节奏。 */
+.lyrics-overlay[data-mode="tilt3d"] .lyrics-line {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.14em;
+  height: auto;
+  min-height: var(--lyrics-line-height);
+  padding: 0.24em 0.6em;
+  line-height: 1.24;
+  font-size: clamp(14px, 1.35vw, 18px);
+  opacity: calc(1 - var(--lyrics-depth, 0) * 0.24);
+  filter: none;
+  transform: translateZ(calc(var(--lyrics-depth, 0) * -42px))
+    rotateX(calc(var(--lyrics-rel, 0) * -4.8deg));
+  transform-origin: 50% 50%;
+  transition: transform 0.74s cubic-bezier(0.22, 0.68, 0.24, 1), opacity 0.6s ease,
+    color 0.6s ease, font-size 0.6s ease, font-weight 0.6s ease, letter-spacing 0.6s ease;
+  will-change: transform, opacity;
+}
+
+/* 长句换行（参考稿同样是多行主歌词 + 译文），不再截断成省略号。 */
+.lyrics-overlay[data-mode="tilt3d"] .lyrics-text,
+.lyrics-overlay[data-mode="tilt3d"] .lyrics-translation {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.lyrics-overlay[data-mode="tilt3d"] .lyrics-line .lyrics-text {
+  filter: blur(calc(var(--lyrics-depth, 0) * 0.85px)) drop-shadow(0 2px 14px rgba(3, 7, 18, 0.5));
+}
+
+/* 3D 模式里前后行的明暗交给纵深变量，不再整行隐藏。 */
+.lyrics-overlay[data-mode="tilt3d"] .lyrics-line.lyrics-away .lyrics-text {
+  opacity: 1;
+}
+
+/* 当前行：向前弹出、回到正视角度。字号比经典模式克制，保证长句能整行放下。 */
+.lyrics-overlay[data-mode="tilt3d"] .lyrics-line.lyrics-active {
+  z-index: 3;
+  opacity: 1;
+  filter: none;
+  font-size: clamp(20px, 2.2vw, 30px);
+  transform: translateZ(70px) rotateX(0deg);
+}
+
+.lyrics-overlay[data-mode="tilt3d"] .lyrics-line.lyrics-active .lyrics-text {
+  filter: drop-shadow(0 0 20px rgba(168, 220, 255, 0.28))
+    drop-shadow(0 3px 16px rgba(3, 7, 18, 0.55));
+}
+
+/* 曲风动效在 3D 模式改用“不碰 transform”的版本，避免覆盖 3D 纵深变换。 */
+.lyrics-overlay[data-mode="tilt3d"] .lyrics-line.lyrics-active.lyrics-motion-pulse {
+  animation-name: lyrics-shine-tilt;
+}
+
+.lyrics-overlay[data-mode="tilt3d"] .lyrics-line.lyrics-active.lyrics-motion-blur {
+  animation-name: lyrics-mist-tilt;
+}
+
+@keyframes lyrics-shine-tilt {
+  0%,
+  100% {
+    letter-spacing: var(--lyrics-tracking, 0.12em);
+    background-position: 0% 50%;
+    filter: drop-shadow(0 0 10px var(--lyrics-accent, rgba(255, 196, 137, 0.4)));
+  }
+  50% {
+    letter-spacing: calc(var(--lyrics-tracking, 0.12em) + 0.02em);
+    background-position: 100% 50%;
+    filter: drop-shadow(0 0 20px var(--lyrics-accent, rgba(255, 196, 137, 0.75)));
+  }
+}
+
+@keyframes lyrics-mist-tilt {
+  0%,
+  100% {
+    letter-spacing: var(--lyrics-tracking, 0.16em);
+    filter: blur(0.2px) drop-shadow(0 0 8px var(--lyrics-accent, rgba(182, 196, 232, 0.4)));
+    opacity: 0.95;
+  }
+  50% {
+    letter-spacing: calc(var(--lyrics-tracking, 0.16em) + 0.02em);
+    filter: blur(1.4px) drop-shadow(0 0 16px var(--lyrics-accent, rgba(182, 196, 232, 0.65)));
+    opacity: 1;
+  }
+}
+
+/* 译文：主歌词下方的小字（双语 LRC 同一时间戳的第二行）。 */
+.lyrics-translation {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(11px, 1.05vw, 14px);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  line-height: 1.35;
+  color: rgba(204, 216, 248, 0.56);
+  -webkit-text-fill-color: currentColor;
+  transition: color 0.55s ease, font-size 0.55s ease;
+}
+
+.lyrics-overlay[data-mode="tilt3d"] .lyrics-line.lyrics-prev .lyrics-translation,
+.lyrics-overlay[data-mode="tilt3d"] .lyrics-line.lyrics-next .lyrics-translation {
+  color: rgba(196, 208, 240, 0.42);
+}
+
+.lyrics-overlay[data-mode="tilt3d"] .lyrics-line.lyrics-active .lyrics-translation {
+  color: rgba(226, 236, 255, 0.82);
+}
+
+/* 3D 倾斜模式下左侧介绍文案淡出成为背景；位置选左/右时同样淡出，避免文字叠文字。 */
+body .intro {
+  transition: opacity 0.5s ease;
+}
+
+body.lyrics-position-left .intro,
+body.lyrics-position-right .intro {
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+/* 3D 倾斜是“歌词主角”模式：介绍文案完全让位，歌词可以放心铺开。 */
+body.lyrics-mode-tilt3d .intro {
+  opacity: 0;
+  pointer-events: none;
+}
+/* 不支持 background-clip: text 的浏览器退化为纯色高亮，保证可读性。 */
+@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+  .lyrics-line.lyrics-active {
+    color: var(--lyrics-accent, #c3dcff);
+    -webkit-text-fill-color: currentColor;
+  }
+}
+
+/* ---- 响应式：1440x900 / 390x844 都要“大字但不压播放器” ---- */
+@media (max-width: 760px) {
+  .lyrics-overlay {
+    top: 17%;
+    width: min(92vw, 560px);
+    --lyrics-line-height: clamp(42px, 6.6vh, 58px);
+  }
+
+  .lyrics-line.lyrics-active {
+    font-size: clamp(27px, 7.2vw, 34px);
+    letter-spacing: calc(var(--lyrics-tracking, 0.08em) - 0.01em);
+  }
+
+  .lyrics-line {
+    font-size: clamp(12px, 3.4vw, 15px);
+  }
+
+  .lyrics-backdrop {
+    inset: -60% -30%;
+    filter: blur(34px);
+  }
+}
+
+/* 横屏矮屏：压缩走廊，避免压到底部播放器。 */
+@media (max-height: 560px) and (min-width: 761px) {
+  .lyrics-overlay {
+    top: 15%;
+    --lyrics-line-height: clamp(34px, 8vh, 46px);
+  }
+
+  .lyrics-line.lyrics-active {
+    font-size: clamp(22px, 3vw, 32px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lyrics-list,
+  .lyrics-text,
+  .lyrics-line {
+    transition: none;
+  }
+
+  .lyrics-line,
+  .lyrics-line.lyrics-active,
+  .lyrics-line.lyrics-active::after,
+  .lyrics-line.lyrics-active .lyrics-text,
+  .lyrics-backdrop {
+    animation: none;
+  }
+}
+
+/* ---- 位置 / 3D 倾斜的响应式微调（放在最后，覆盖上面的基础尺寸）---- */
+
+/* 窄桌面：右侧效果面板变窄，右侧留白同步收一点。 */
+@media (max-width: 1050px) and (min-width: 761px) {
+  .lyrics-overlay[data-position="right"] {
+    right: clamp(290px, 30vw, 340px);
+  }
+}
+
+@media (max-width: 760px) {
+  .lyrics-overlay[data-position="left"] {
+    left: max(16px, 5vw);
+    width: min(88vw, 560px);
+    max-width: none;
+  }
+
+  .lyrics-overlay[data-position="right"] {
+    right: max(16px, 5vw);
+    width: min(88vw, 560px);
+    max-width: none;
+  }
+
+  .lyrics-overlay[data-mode="tilt3d"] {
+    top: 17%;
+    --lyrics-visible: 5;
+    --lyrics-line-height: clamp(56px, 8vh, 74px);
+  }
+
+  .lyrics-overlay[data-mode="tilt3d"] .lyrics-stage {
+    perspective: 720px;
+  }
+
+  .lyrics-overlay[data-mode="tilt3d"] .lyrics-line {
+    font-size: clamp(12px, 3vw, 16px);
+  }
+
+  .lyrics-overlay[data-mode="tilt3d"] .lyrics-line.lyrics-active {
+    font-size: calc(clamp(17px, 4.6vw, 23px) * var(--lyrics-scale, 1));
+  }
+
+  .lyrics-overlay[data-mode="tilt3d"] .lyrics-translation {
+    font-size: clamp(10px, 2.4vw, 12px);
+  }
+}
+
+/* 横屏矮屏：再压缩走廊，避免压到底部播放器。 */
+@media (max-height: 560px) and (min-width: 761px) {
+  .lyrics-overlay[data-mode="tilt3d"] {
+    --lyrics-visible: 4;
+    --lyrics-line-height: clamp(44px, 10vh, 58px);
+  }
+
+  .lyrics-overlay[data-mode="tilt3d"] .lyrics-line.lyrics-active {
+    font-size: calc(clamp(19px, 2.4vw, 28px) * var(--lyrics-scale, 1));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lyrics-overlay[data-mode="tilt3d"] .lyrics-list,
+  .lyrics-overlay[data-mode="tilt3d"] .lyrics-line {
+    transition: none;
+  }
+}
+
+/* ---- 自定义歌词颜色（组件写入 data-color="custom" + --lyrics-gradient/--lyrics-accent）----
+   渐变与主色已经由 JS 换成用户选的颜色，这里只做少量可读性微调：
+   光带更亮、背景光晕收一点、3D 模式当前行的辉光跟随主色。
+   清空自定义颜色（点「跟随曲风」）后 data-color 被移除，这些规则自动失效。 */
+.lyrics-overlay[data-color="custom"] .lyrics-line.lyrics-active::after {
+  height: 2px;
+  opacity: 0.72;
+  box-shadow:
+    0 0 14px var(--lyrics-accent, #a8dcff),
+    0 0 28px var(--lyrics-accent, #a8dcff);
+}
+
+.lyrics-overlay[data-color="custom"] .lyrics-backdrop {
+  opacity: 0.58;
+}
+
+.lyrics-overlay[data-color="custom"][data-mode="tilt3d"] .lyrics-line.lyrics-active .lyrics-text {
+  filter: drop-shadow(0 0 20px var(--lyrics-accent, #a8dcff))
+    drop-shadow(0 3px 16px rgba(3, 7, 18, 0.55));
+}
+
+
+/* ---------- 可读性：播放中给歌词垫暗底，并压暗左侧介绍避免叠字 ---------- */
+.lyrics-overlay::before {
+  content: "";
+  position: absolute;
+  inset: -10% -18%;
+  z-index: -2;
+  border-radius: 40px;
+  background: radial-gradient(56% 62% at 50% 46%, rgba(3, 5, 12, 0.72) 0%, rgba(3, 5, 12, 0.34) 52%, transparent 78%);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+body.lyrics-live .lyrics-overlay::before {
+  opacity: 1;
+}
+
+.intro {
+  transition: opacity 0.6s ease, filter 0.6s ease;
+}
+
+body.lyrics-live .intro {
+  opacity: 0;
+  visibility: hidden;
+  filter: blur(2px);
+}
+
+@media (max-width: 860px) {
+  body.lyrics-live .intro {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* ---------- 逐字（karaoke）：清楚版 ----------
+   已唱部分走曲风渐变、未唱部分亮一点的灰白；字距收紧、当前字带一点辉光。 */
+.lyrics-overlay[data-mode='karaoke'] .lyrics-line {
+  letter-spacing: 0.02em;
+}
+
+.lyrics-overlay[data-mode='karaoke'] .lyrics-line.lyrics-active {
+  font-size: clamp(22px, 2.9vw, 36px);
+}
+
+.lyrics-overlay[data-mode='karaoke'] .lyrics-word {
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  background-image: var(--lyrics-gradient);
+  background-repeat: no-repeat;
+  background-size: calc(var(--word-progress, 0) * 100%) 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  transition: background-size 0.08s linear;
+}
+
+.lyrics-overlay[data-mode='karaoke'] .lyrics-word::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  color: rgba(230, 236, 250, 0.55);
+  -webkit-text-fill-color: rgba(230, 236, 250, 0.55);
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  background: none;
+  pointer-events: none;
+}
+
+.lyrics-overlay[data-mode='karaoke'] .lyrics-word.is-current {
+  text-shadow: 0 0 22px var(--lyrics-accent);
+}
+
+.lyrics-overlay[data-mode='karaoke'] .lyrics-word.is-sung {
+  opacity: 1;
+}
+
+/* ---------- 苹果景深（apple）：参考 Apple Music / AMLL 的景深歌词 ----------
+   当前句最大最清晰，前后句失焦后退；当前句逐字扫亮。 */
+.lyrics-overlay[data-mode='apple'] {
+  --lyrics-width: min(84vw, 960px);
+}
+
+.lyrics-overlay[data-mode='apple'] .lyrics-list {
+  transition: transform 0.58s cubic-bezier(0.22, 0.9, 0.24, 1);
+}
+
+.lyrics-overlay[data-mode='apple'] .lyrics-line {
+  opacity: 0.16;
+  filter: blur(2.6px);
+  transform: scale(0.94);
+  transition: opacity 0.5s ease, filter 0.5s ease, transform 0.55s cubic-bezier(0.22, 0.9, 0.24, 1),
+    font-size 0.5s ease;
+}
+
+.lyrics-overlay[data-mode='apple'] .lyrics-line.lyrics-prev {
+  opacity: 0.36;
+  filter: blur(1.2px);
+  transform: scale(0.97) translateY(-0.18em);
+}
+
+.lyrics-overlay[data-mode='apple'] .lyrics-line.lyrics-next {
+  opacity: 0.26;
+  filter: blur(1.8px);
+  transform: scale(0.96) translateY(0.18em);
+}
+
+.lyrics-overlay[data-mode='apple'] .lyrics-line.lyrics-away {
+  opacity: 0.05;
+  filter: blur(7px);
+}
+
+.lyrics-overlay[data-mode='apple'] .lyrics-line.lyrics-active {
+  transform: scale(1);
+  font-size: clamp(28px, 3.8vw, 48px);
+  letter-spacing: 0.01em;
+}
+
+.lyrics-overlay[data-mode='apple'] .lyrics-line.lyrics-active .lyrics-text {
+  animation: none;
+}
+
+.lyrics-overlay[data-mode='apple'] .lyrics-word {
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  background-image: var(--lyrics-gradient);
+  background-repeat: no-repeat;
+  background-size: calc(var(--word-progress, 0) * 100%) 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  transition: background-size 0.1s linear;
+}
+
+.lyrics-overlay[data-mode='apple'] .lyrics-word::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  color: rgba(228, 234, 250, 0.42);
+  -webkit-text-fill-color: rgba(228, 234, 250, 0.42);
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  background: none;
+  pointer-events: none;
+}
+
+/* ---------- 打字机（typewriter）：逐字浮现 + 句尾光标 ----------
+   等宽字体、纯色文字，安静段落更清楚。 */
+.lyrics-overlay[data-mode='typewriter'] .lyrics-line {
+  filter: none;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, "Microsoft YaHei", monospace;
+  letter-spacing: 0.02em;
+  color: rgba(220, 228, 246, 0.34);
+}
+
+.lyrics-overlay[data-mode='typewriter'] .lyrics-line.lyrics-active {
+  font-size: clamp(20px, 2.5vw, 32px);
+  color: #eaf2ff;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  text-shadow: 0 0 20px rgba(168, 220, 255, 0.28);
+}
+
+.lyrics-overlay[data-mode='typewriter'] .lyrics-word {
+  opacity: 1;
+  transition: opacity 0.12s linear;
+}
+
+/* 只有「正在播放」时才逐字浮现；暂停/结束时整句保持可见，不会变成空白 */
+body.lyrics-playing .lyrics-overlay[data-mode='typewriter'] .lyrics-word {
+  opacity: clamp(0, calc(var(--word-progress, 0) * 5), 1);
+}
+
+.lyrics-overlay[data-mode='typewriter'] .lyrics-line.lyrics-active .lyrics-text::after {
+  content: "▍";
+  margin-left: 0.08em;
+  color: var(--lyrics-accent, #a8dcff);
+  -webkit-text-fill-color: var(--lyrics-accent, #a8dcff);
+  animation: lyrics-caret 0.95s steps(1) infinite;
+}
+
+@keyframes lyrics-caret {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ---------- 霓虹（glow）：逐字点亮 + 辉光，当前句呼吸 ---------- */
+.lyrics-overlay[data-mode='glow'] .lyrics-line {
+  filter: none;
+  color: rgba(222, 230, 255, 0.36);
+}
+
+.lyrics-overlay[data-mode='glow'] .lyrics-line.lyrics-active {
+  font-size: clamp(26px, 3.4vw, 44px);
+  color: #f4f7ff;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+
+.lyrics-overlay[data-mode='glow'] .lyrics-word {
+  color: rgba(226, 234, 255, 0.38);
+  transition: color 0.16s ease, text-shadow 0.18s ease;
+}
+
+.lyrics-overlay[data-mode='glow'] .lyrics-word.is-current {
+  color: #ffffff;
+  text-shadow: 0 0 14px var(--lyrics-accent), 0 0 38px var(--lyrics-accent);
+}
+
+.lyrics-overlay[data-mode='glow'] .lyrics-word.is-sung {
+  color: #ffffff;
+  text-shadow: 0 0 8px var(--lyrics-accent), 0 0 20px var(--lyrics-accent);
+}
+
+.lyrics-overlay[data-mode='glow'] .lyrics-line.lyrics-active .lyrics-text {
+  animation: lyrics-neon 2.8s ease-in-out infinite;
+}
+
+@keyframes lyrics-neon {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 6px rgba(168, 220, 255, 0.18));
+  }
+  50% {
+    filter: drop-shadow(0 0 22px var(--lyrics-accent, #a8dcff));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lyrics-overlay[data-mode='apple'] .lyrics-line,
+  .lyrics-overlay[data-mode='typewriter'] .lyrics-word,
+  .lyrics-overlay[data-mode='glow'] .lyrics-line.lyrics-active .lyrics-text {
+    transition: none;
+    animation: none;
+  }
+
+  .lyrics-overlay[data-mode='typewriter'] .lyrics-line.lyrics-active .lyrics-text::after {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* ---------- 逐字模式的关键修正 ----------
+   .lyrics-active 默认会用 background-clip:text 画整行渐变；
+   逐字模式下每个 .lyrics-word 已经各自画渐变，父级再画一层就会错位叠成「双影」。
+   这里把当前行自己的渐变关掉，只让每个词负责自己的进度。 */
+.lyrics-overlay[data-mode='karaoke'] .lyrics-line.lyrics-active,
+.lyrics-overlay[data-mode='apple'] .lyrics-line.lyrics-active {
+  background-image: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+}
+
+/* ---------- 电影字幕（cinema）：沉到底部的小号字幕 ---------- */
+.lyrics-overlay[data-mode='cinema'] {
+  top: auto;
+  bottom: 12%;
+  --lyrics-visible: 3;
+  --lyrics-line-height: clamp(30px, 3.8vh, 42px);
+  --lyrics-width: min(80vw, 900px);
+}
+
+.lyrics-overlay[data-mode='cinema'] .lyrics-stage {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 30%, #000 70%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 30%, #000 70%, transparent 100%);
+}
+
+.lyrics-overlay[data-mode='cinema'] .lyrics-line {
+  font-size: clamp(12px, 1.1vw, 15px);
+  letter-spacing: 0.06em;
+  opacity: 0.35;
+  filter: none;
+}
+
+.lyrics-overlay[data-mode='cinema'] .lyrics-prev,
+.lyrics-overlay[data-mode='cinema'] .lyrics-next {
+  opacity: 0.28;
+  filter: blur(0.4px);
+}
+
+.lyrics-overlay[data-mode='cinema'] .lyrics-line.lyrics-active {
+  font-size: clamp(18px, 1.9vw, 26px);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.lyrics-overlay[data-mode='cinema'] .lyrics-line.lyrics-active::after {
+  display: none;
+}
+
+/* ---------- 弹跳（bounce）：逐字依次弹出 ---------- */
+.lyrics-overlay[data-mode='bounce'] .lyrics-line.lyrics-active .lyrics-text {
+  animation: none;
+}
+
+.lyrics-overlay[data-mode='bounce'] .lyrics-line.lyrics-active .lyrics-word {
+  animation: lyrics-word-bounce 0.6s cubic-bezier(0.22, 1.5, 0.36, 1) both;
+  animation-delay: calc(var(--word-index, 0) * 34ms);
+}
+
+.lyrics-overlay[data-mode='bounce'] .lyrics-line.lyrics-active {
+  background-image: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.lyrics-overlay[data-mode='bounce'] .lyrics-word {
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  background-image: var(--lyrics-gradient);
+  background-repeat: no-repeat;
+  background-size: calc(var(--word-progress, 0) * 100%) 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.lyrics-overlay[data-mode='bounce'] .lyrics-word::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  color: rgba(230, 236, 250, 0.5);
+  -webkit-text-fill-color: rgba(230, 236, 250, 0.5);
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+}
+
+@keyframes lyrics-word-bounce {
+  0% {
+    transform: translateY(0.55em) scale(0.7);
+    opacity: 0;
+  }
+  55% {
+    transform: translateY(-0.12em) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ---------- 描边（outline）：空心字逐个填色 ---------- */
+.lyrics-overlay[data-mode='outline'] .lyrics-line.lyrics-active {
+  background-image: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  font-size: clamp(26px, 3.4vw, 44px);
+}
+
+.lyrics-overlay[data-mode='outline'] .lyrics-word {
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 1.2px var(--lyrics-accent, #a8dcff);
+  background-image: var(--lyrics-gradient);
+  background-repeat: no-repeat;
+  background-size: calc(var(--word-progress, 0) * 100%) 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* ---------- 词岛（island）：当前句装进毛玻璃胶囊 ---------- */
+.lyrics-overlay[data-mode='island'] {
+  --lyrics-width: min(74vw, 760px);
+}
+
+.lyrics-overlay[data-mode='island'] .lyrics-backdrop {
+  opacity: 0.5;
+}
+
+.lyrics-overlay[data-mode='island'] .lyrics-stage {
+  height: auto;
+  overflow: visible;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.lyrics-overlay[data-mode='island'] .lyrics-list {
+  gap: 12px;
+  padding: 14px 0;
+  transform: none !important;
+  transition: none;
+}
+
+.lyrics-overlay[data-mode='island'] .lyrics-line {
+  height: auto;
+  width: fit-content;
+  align-self: center;
+  line-height: 1.55;
+  padding: 0 1em;
+  max-height: 0;
+  opacity: 0;
+  border: 1px solid transparent;
+  overflow: hidden;
+  transition: opacity 0.4s ease, max-height 0.45s ease, padding 0.45s ease, border-color 0.4s ease;
+}
+
+.lyrics-overlay[data-mode='island'] .lyrics-line.lyrics-active {
+  opacity: 1;
+  max-height: 6em;
+  padding: 0.55em 1.6em;
+  border-radius: 999px;
+  border: 1px solid rgba(168, 220, 255, 0.28);
+  background: rgba(10, 14, 28, 0.6);
+  background-image: none;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.38), 0 0 34px rgba(168, 220, 255, 0.14);
+  backdrop-filter: blur(16px);
+  color: #eef4ff;
+  -webkit-text-fill-color: #eef4ff;
+}
+
+.lyrics-overlay[data-mode='island'] .lyrics-line.lyrics-active .lyrics-text {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.35;
+}
+
+.lyrics-overlay[data-mode='island'] .lyrics-line.lyrics-active::after {
+  display: none;
+}
+
+/* ---------- 单行聚焦（focus）：只留当前一句 ---------- */
+.lyrics-overlay[data-mode='focus'] {
+  --lyrics-width: min(88vw, 1000px);
+}
+
+.lyrics-overlay[data-mode='focus'] .lyrics-backdrop {
+  opacity: 0.9;
+}
+
+.lyrics-overlay[data-mode='focus'] .lyrics-stage {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.lyrics-overlay[data-mode='focus'] .lyrics-line:not(.lyrics-active) {
+  opacity: 0;
+  filter: blur(10px);
+}
+
+/* 长句要能换行，否则单行聚焦会被截成省略号 */
+.lyrics-overlay[data-mode='focus'] .lyrics-line {
+  height: auto;
+  line-height: 1.25;
+  padding: 0.15em 0;
+}
+
+.lyrics-overlay[data-mode='focus'] .lyrics-text {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.lyrics-overlay[data-mode='focus'] .lyrics-line.lyrics-active {
+  font-size: clamp(34px, 5.2vw, 68px);
+  letter-spacing: 0.05em;
+}
+
+.lyrics-overlay[data-mode='focus'] .lyrics-line.lyrics-active::after {
+  width: 60%;
+}
+
+/* ---------- 对唱（duet）：左右交替排布 ---------- */
+.lyrics-overlay[data-mode='duet'] {
+  --lyrics-width: min(86vw, 1040px);
+}
+
+.lyrics-overlay[data-mode='duet'] .lyrics-list {
+  align-items: stretch;
+}
+
+.lyrics-overlay[data-mode='duet'] .lyrics-line {
+  width: 100%;
+  text-align: left;
+  padding: 0 0.4em;
+}
+
+.lyrics-overlay[data-mode='duet'] .lyrics-line[data-side='right'] {
+  text-align: right;
+}
+
+.lyrics-overlay[data-mode='duet'] .lyrics-line.lyrics-active {
+  font-size: clamp(24px, 3.2vw, 40px);
+}
+
+.lyrics-overlay[data-mode='duet'] .lyrics-line.lyrics-active::after {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lyrics-overlay[data-mode='bounce'] .lyrics-line.lyrics-active .lyrics-word {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   歌词运镜 / 文字动效（参考 JIZURA 的 kinetic type / layout 思路）
+   这些模式会移动整块歌词或逐字动画，不再只固定在左上中右。
+   ============================================================ */
+
+/* ---------- 漂浮：整块缓慢漂浮 + 行错落起伏 ---------- */
+.lyrics-overlay[data-mode='drift'] .lyrics-stage {
+  animation: lyrics-drift-float 16s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.lyrics-overlay[data-mode='drift'] .lyrics-line {
+  animation: lyrics-drift-line 9s ease-in-out infinite alternate;
+}
+
+.lyrics-overlay[data-mode='drift'] .lyrics-line:nth-child(2n) {
+  animation-duration: 11.5s;
+  animation-delay: -2.4s;
+}
+
+.lyrics-overlay[data-mode='drift'] .lyrics-line:nth-child(3n) {
+  animation-duration: 8s;
+  animation-delay: -4.1s;
+}
+
+@keyframes lyrics-drift-float {
+  from {
+    transform: translate3d(-2.4vw, -1.4vh, 0) rotate(-0.7deg);
+  }
+  to {
+    transform: translate3d(2.6vw, 1.8vh, 0) rotate(0.7deg);
+  }
+}
+
+@keyframes lyrics-drift-line {
+  from {
+    transform: translateY(-3px) rotate(-0.35deg);
+  }
+  to {
+    transform: translateY(3px) rotate(0.35deg);
+  }
+}
+
+/* ---------- 摆荡：3D 透视下整块左右摇 ---------- */
+.lyrics-overlay[data-mode='swing'] {
+  perspective: 1100px;
+}
+
+.lyrics-overlay[data-mode='swing'] .lyrics-stage {
+  transform-style: preserve-3d;
+  animation: lyrics-swing 11s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes lyrics-swing {
+  0% {
+    transform: translateX(-3.4vw) rotateY(-12deg) rotateZ(-1.1deg);
+  }
+  100% {
+    transform: translateX(3.4vw) rotateY(12deg) rotateZ(1.1deg);
+  }
+}
+
+/* ---------- 竖排：中文 / 日文竖排，从右向左推进 ---------- */
+.lyrics-overlay[data-mode='vertical'] {
+  --lyrics-width: min(70vw, 760px);
+  --lyrics-line-height: clamp(56px, 7.6vh, 88px);
+  top: 10%;
+}
+
+.lyrics-overlay[data-mode='vertical'] .lyrics-stage {
+  height: min(72vh, 780px);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%);
+}
+
+.lyrics-overlay[data-mode='vertical'] .lyrics-list {
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 0 calc((var(--lyrics-visible) - 1) / 2 * var(--lyrics-line-height));
+  transform: translateX(calc(var(--lyrics-index, 0) * -1 * var(--lyrics-line-height)));
+}
+
+.lyrics-overlay[data-mode='vertical'] .lyrics-line {
+  flex: 0 0 var(--lyrics-line-height);
+  width: var(--lyrics-line-height);
+  max-width: none;
+  height: 100%;
+  padding: 0;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+.lyrics-overlay[data-mode='vertical'] .lyrics-text {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  max-height: 100%;
+  font-size: clamp(22px, 2.6vh, 32px);
+  line-height: 1.35;
+  letter-spacing: 0.16em;
+}
+
+.lyrics-overlay[data-mode='vertical'] .lyrics-line.lyrics-active {
+  font-size: clamp(26px, 3.2vh, 38px);
+}
+
+.lyrics-overlay[data-mode='vertical'] .lyrics-line.lyrics-active::after {
+  display: none;
+}
+
+.lyrics-overlay[data-mode='vertical'] .lyrics-translation {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-size: 0.46em;
+  letter-spacing: 0.08em;
+}
+
+/* ---------- 弹跳字：当前句逐字弹入、旋转、回弹 ---------- */
+.lyrics-overlay[data-mode='kinetic'] .lyrics-stage {
+  animation: lyrics-kinetic-sway 7s ease-in-out infinite alternate;
+}
+
+.lyrics-overlay[data-mode='kinetic'] .lyrics-line {
+  animation: lyrics-kinetic-idle 6s ease-in-out infinite alternate;
+}
+
+.lyrics-overlay[data-mode='kinetic'] .lyrics-line:nth-child(2n) {
+  animation-delay: -1.5s;
+}
+
+.lyrics-overlay[data-mode='kinetic'] .lyrics-line.lyrics-active {
+  animation: none;
+}
+
+.lyrics-overlay[data-mode='kinetic'] .lyrics-line.lyrics-active .lyrics-word {
+  display: inline-block;
+  animation: lyrics-kinetic-pop 0.62s cubic-bezier(0.2, 1.5, 0.35, 1) both;
+  animation-delay: calc(var(--word-index, 0) * 55ms + 40ms);
+}
+
+@keyframes lyrics-kinetic-sway {
+  from {
+    transform: translateX(-1.6vw) rotate(-0.6deg);
+  }
+  to {
+    transform: translateX(1.6vw) rotate(0.6deg);
+  }
+}
+
+@keyframes lyrics-kinetic-idle {
+  from {
+    transform: translateY(-2px);
+  }
+  to {
+    transform: translateY(2px);
+  }
+}
+
+@keyframes lyrics-kinetic-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(0.6em) rotate(calc((var(--word-index, 0) - 2) * 6deg)) scale(0.5);
+    filter: blur(5px);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(-0.14em) rotate(calc((var(--word-index, 0) - 2) * -2deg)) scale(1.14);
+    filter: blur(0);
+  }
+  80% {
+    transform: translateY(0.03em) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* ---------- 故障：RGB 分离 + 抖动 + 扫描线 ---------- */
+.lyrics-overlay[data-mode='glitch'] .lyrics-stage {
+  animation: lyrics-glitch-stage 5.4s steps(1, end) infinite;
+}
+
+.lyrics-overlay[data-mode='glitch'] .lyrics-line.lyrics-active .lyrics-text {
+  filter: drop-shadow(-2px 0 rgba(255, 64, 120, 0.7)) drop-shadow(2px 0 rgba(64, 224, 255, 0.7));
+  animation: lyrics-glitch-shift 2.6s steps(1, end) infinite;
+}
+
+.lyrics-overlay[data-mode='glitch'] .lyrics-line.lyrics-active::after {
+  height: 2px;
+  width: 72%;
+  bottom: 4%;
+  opacity: 0.35;
+  animation: lyrics-glitch-scan 2.2s linear infinite;
+}
+
+.lyrics-overlay[data-mode='glitch'] .lyrics-line.lyrics-active::before {
+  content: '';
+  position: absolute;
+  inset: 6% 4%;
+  z-index: -1;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.045) 0px,
+    rgba(255, 255, 255, 0.045) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  mix-blend-mode: screen;
+  opacity: 0.5;
+}
+
+@keyframes lyrics-glitch-stage {
+  0%, 92%, 100% {
+    transform: translate(0, 0) skewX(0);
+  }
+  93% {
+    transform: translate(-3px, 1px) skewX(-1.4deg);
+  }
+  94% {
+    transform: translate(4px, -2px) skewX(1.8deg);
+  }
+  95% {
+    transform: translate(-2px, 0) skewX(-0.8deg);
+  }
+}
+
+@keyframes lyrics-glitch-shift {
+  0%, 88%, 100% {
+    transform: translate(0, 0);
+    clip-path: inset(0 0 0 0);
+  }
+  89% {
+    transform: translate(-4px, 1px);
+    clip-path: inset(8% 0 62% 0);
+  }
+  90% {
+    transform: translate(5px, -1px);
+    clip-path: inset(52% 0 18% 0);
+  }
+  91% {
+    transform: translate(-2px, 2px);
+    clip-path: inset(28% 0 44% 0);
+  }
+}
+
+@keyframes lyrics-glitch-scan {
+  from {
+    transform: translateX(-18%);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.4;
+  }
+  80% {
+    opacity: 0.4;
+  }
+  to {
+    transform: translateX(18%);
+    opacity: 0;
+  }
+}
+
+/* ---------- 散点：每个字从不同方向飞入聚拢 ---------- */
+.lyrics-overlay[data-mode='scatter'] .lyrics-stage {
+  animation: lyrics-scatter-float 12s ease-in-out infinite alternate;
+}
+
+.lyrics-overlay[data-mode='scatter'] .lyrics-line.lyrics-active .lyrics-word {
+  display: inline-block;
+  animation: lyrics-scatter-in 0.72s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--word-index, 0) * 34ms);
+}
+
+.lyrics-overlay[data-mode='scatter'] .lyrics-word {
+  --scatter-x: -1.2em;
+  --scatter-y: -0.7em;
+  --scatter-r: -16deg;
+}
+
+.lyrics-overlay[data-mode='scatter'] .lyrics-word:nth-child(4n + 2) {
+  --scatter-x: 1.4em;
+  --scatter-y: -0.5em;
+  --scatter-r: 14deg;
+}
+
+.lyrics-overlay[data-mode='scatter'] .lyrics-word:nth-child(4n + 3) {
+  --scatter-x: -0.9em;
+  --scatter-y: 0.8em;
+  --scatter-r: 20deg;
+}
+
+.lyrics-overlay[data-mode='scatter'] .lyrics-word:nth-child(4n + 4) {
+  --scatter-x: 1.1em;
+  --scatter-y: 0.6em;
+  --scatter-r: -22deg;
+}
+
+@keyframes lyrics-scatter-in {
+  0% {
+    opacity: 0;
+    transform: translate(var(--scatter-x, 0), var(--scatter-y, 0)) rotate(var(--scatter-r, 0)) scale(0.55);
+    filter: blur(4px);
+  }
+  70% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes lyrics-scatter-float {
+  from {
+    transform: translate3d(-1.2vw, -0.8vh, 0);
+  }
+  to {
+    transform: translate3d(1.4vw, 1vh, 0);
+  }
+}
+
+/* 移动端：竖排高度别顶到播放器 */
+@media (max-width: 760px) {
+  .lyrics-overlay[data-mode='vertical'] .lyrics-stage {
+    height: 58vh;
+  }
+
+  .lyrics-overlay[data-mode='vertical'] {
+    --lyrics-width: 88vw;
+    --lyrics-line-height: clamp(48px, 9vw, 66px);
+    top: 12%;
+  }
+
+  .lyrics-overlay[data-mode='vertical'] .lyrics-text {
+    font-size: 20px;
+  }
+}
+
+/* 减少动态效果偏好：保留排版，关掉运镜和逐字动画 */
+@media (prefers-reduced-motion: reduce) {
+  .lyrics-overlay[data-mode='drift'] .lyrics-stage,
+  .lyrics-overlay[data-mode='drift'] .lyrics-line,
+  .lyrics-overlay[data-mode='swing'] .lyrics-stage,
+  .lyrics-overlay[data-mode='kinetic'] .lyrics-stage,
+  .lyrics-overlay[data-mode='kinetic'] .lyrics-line,
+  .lyrics-overlay[data-mode='glitch'] .lyrics-stage,
+  .lyrics-overlay[data-mode='glitch'] .lyrics-line.lyrics-active .lyrics-text,
+  .lyrics-overlay[data-mode='scatter'] .lyrics-stage {
+    animation: none;
+  }
+
+  .lyrics-overlay[data-mode='kinetic'] .lyrics-line.lyrics-active .lyrics-word,
+  .lyrics-overlay[data-mode='scatter'] .lyrics-line.lyrics-active .lyrics-word {
+    animation: none;
+  }
+}
+
+/* 逐字动画需要 inline-block 才能 transform，但会切断父级 background-clip:text 的渐变；
+   这里给逐字样式单独铺渐变，避免整句变成透明不可见。 */
+.lyrics-overlay[data-mode='kinetic'] .lyrics-line.lyrics-active .lyrics-word,
+.lyrics-overlay[data-mode='scatter'] .lyrics-line.lyrics-active .lyrics-word {
+  background-image: var(
+    --lyrics-gradient,
+    linear-gradient(115deg, #f4f8ff 0%, #c3dcff 55%, #8fd0f2 100%)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+
+/* ---------- 律动：音频低频驱动整块歌词缩放 / 轻转 ---------- */
+.lyrics-overlay[data-mode='pulse'] .lyrics-stage {
+  transform: scale(calc(1 + var(--lyrics-bass, 0) * 0.075))
+    rotate(calc((var(--lyrics-beat, 0) - 0.25) * 1.3deg));
+  transition: transform 90ms linear;
+  will-change: transform;
+}
+
+.lyrics-overlay[data-mode='pulse'] .lyrics-line.lyrics-active .lyrics-text {
+  transform: translateY(calc(var(--lyrics-bass, 0) * -0.09em))
+    scale(calc(1 + var(--lyrics-treble, 0) * 0.035));
+  transition: transform 90ms linear, opacity 0.55s ease, filter 0.6s ease;
+}
+
+.lyrics-overlay[data-mode='pulse'] .lyrics-line.lyrics-active::after {
+  opacity: calc(0.3 + var(--lyrics-beat, 0) * 0.7);
+  height: calc(1px + var(--lyrics-beat, 0) * 2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lyrics-overlay[data-mode='pulse'] .lyrics-stage,
+  .lyrics-overlay[data-mode='pulse'] .lyrics-line.lyrics-active .lyrics-text {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* 弹跳字/散点：逐字层已经各自铺了渐变，父级行再画一次会在首字处叠色/重影。
+   这里关闭父级的渐变绘制和整行入场动画，只保留逐字动画。 */
+.lyrics-overlay[data-mode='kinetic'] .lyrics-line.lyrics-active,
+.lyrics-overlay[data-mode='kinetic'] .lyrics-line.lyrics-active .lyrics-text,
+.lyrics-overlay[data-mode='scatter'] .lyrics-line.lyrics-active,
+.lyrics-overlay[data-mode='scatter'] .lyrics-line.lyrics-active .lyrics-text {
+  background-image: none;
+}
+
+.lyrics-overlay[data-mode='kinetic'] .lyrics-line.lyrics-active .lyrics-text,
+.lyrics-overlay[data-mode='scatter'] .lyrics-line.lyrics-active .lyrics-text {
+  animation: none;
+}
+
+
+/* ---------- 聊天：微信式对话气泡 ---------- */
+.lyrics-overlay[data-mode='chat'] {
+  --lyrics-width: min(64vw, 620px);
+  --lyrics-line-height: clamp(78px, 9.6vh, 104px);
+  --lyrics-visible: 5;
+  top: 11%;
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-stage {
+  height: calc(var(--lyrics-visible) * var(--lyrics-line-height));
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-list {
+  align-items: stretch;
+  padding: calc((var(--lyrics-visible) - 1) / 2 * var(--lyrics-line-height)) 0;
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: var(--lyrics-line-height);
+  padding: 0 4px;
+  white-space: normal;
+  line-height: 1.4;
+  opacity: 0.55;
+  filter: none;
+  color: rgba(240, 244, 255, 0.86);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line[data-side='left'] {
+  justify-content: flex-start;
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line[data-side='right'] {
+  justify-content: flex-end;
+}
+
+/* 头像 */
+.lyrics-overlay[data-mode='chat'] .lyrics-line::before {
+  content: 'TA';
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: linear-gradient(140deg, #5b6478, #2c3140);
+  color: #eef1fa;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line[data-side='right']::before {
+  content: '我';
+  background: linear-gradient(140deg, #5be59d, #2fb877);
+  color: #0b2418;
+  order: 2;
+}
+
+/* 气泡 */
+.lyrics-overlay[data-mode='chat'] .lyrics-line .lyrics-text {
+  position: relative;
+  display: block;
+  width: auto;
+  max-width: min(74%, 430px);
+  height: auto;
+  max-height: calc(var(--lyrics-line-height) - 16px);
+  padding: 9px 13px;
+  border-radius: 14px;
+  border-bottom-left-radius: 5px;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(244, 247, 255, 0.92);
+  font-size: clamp(14px, 1.55vw, 17px);
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: clip;
+  transform: none;
+  animation: none;
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line[data-side='right'] .lyrics-text {
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 5px;
+  background: linear-gradient(135deg, #5be59d, #33c985);
+  border-color: rgba(120, 255, 190, 0.25);
+  color: #092017;
+}
+
+/* 气泡小尾巴 */
+.lyrics-overlay[data-mode='chat'] .lyrics-line[data-side='left'] .lyrics-text::after {
+  content: '';
+  position: absolute;
+  left: -5px;
+  bottom: 7px;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  transform: rotate(45deg) skew(-8deg, -8deg);
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line[data-side='right'] .lyrics-text::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  bottom: 7px;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  border-right: 1px solid rgba(120, 255, 190, 0.25);
+  border-bottom: 1px solid rgba(120, 255, 190, 0.25);
+  transform: rotate(45deg) skew(-8deg, -8deg);
+}
+
+/* 当前句：气泡弹入 + 更高不透明度 */
+.lyrics-overlay[data-mode='chat'] .lyrics-line.lyrics-active {
+  opacity: 1;
+  background: none;
+  background-image: none;
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+  filter: none;
+  font-size: inherit;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line.lyrics-active .lyrics-text {
+  animation: lyrics-chat-pop 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.22);
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line.lyrics-active[data-side='right'] .lyrics-text {
+  animation-name: lyrics-chat-pop-right;
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line.lyrics-active::after {
+  display: none;
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-translation {
+  display: none;
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line.lyrics-prev,
+.lyrics-overlay[data-mode='chat'] .lyrics-line.lyrics-next {
+  opacity: 0.62;
+  filter: none;
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line.lyrics-away {
+  opacity: 0.16;
+  filter: none;
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line.lyrics-away .lyrics-text {
+  opacity: 1;
+}
+
+@keyframes lyrics-chat-pop {
+  from {
+    opacity: 0;
+    transform: translate(-8px, 6px) scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lyrics-chat-pop-right {
+  from {
+    opacity: 0;
+    transform: translate(8px, 6px) scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .lyrics-overlay[data-mode='chat'] {
+    --lyrics-width: 90vw;
+    --lyrics-line-height: clamp(72px, 11vw, 92px);
+    top: 10%;
+  }
+
+  .lyrics-overlay[data-mode='chat'] .lyrics-line .lyrics-text {
+    max-width: 78%;
+    font-size: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lyrics-overlay[data-mode='chat'] .lyrics-line.lyrics-active .lyrics-text {
+    animation: none;
+  }
+}
+
+/* 聊天模式关闭曲风给整行加的 drop-shadow / 呼吸动画，避免气泡后面出现一块矩形光斑 */
+.lyrics-overlay[data-mode='chat'] .lyrics-line.lyrics-active {
+  animation: none;
+  filter: none;
+}
+
+/* ---- 聊天身份：可编辑头像/名字 ---- */
+.lyrics-overlay[data-mode='chat'] .lyrics-line[data-side='left']::before {
+  content: var(--chat-ta-initial, 'TA');
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line[data-side='right']::before {
+  content: var(--chat-me-initial, '我');
+}
+
+.lyrics-overlay[data-mode='chat'].chat-ta-image .lyrics-line[data-side='left']::before {
+  content: '';
+  background-image: var(--chat-ta-avatar);
+  background-size: cover;
+  background-position: center;
+  color: transparent;
+}
+
+.lyrics-overlay[data-mode='chat'].chat-me-image .lyrics-line[data-side='right']::before {
+  content: '';
+  background-image: var(--chat-me-avatar);
+  background-size: cover;
+  background-position: center;
+  color: transparent;
+}
+
+/* 名字：气泡上方的小标签 */
+.lyrics-overlay[data-mode='chat'] .lyrics-line .lyrics-text::before {
+  position: absolute;
+  top: -17px;
+  left: 6px;
+  right: auto;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: rgba(210, 218, 238, 0.52);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line[data-side='left'] .lyrics-text::before {
+  content: var(--chat-ta-name, 'TA');
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line[data-side='right'] .lyrics-text::before {
+  content: var(--chat-me-name, '我');
+  left: auto;
+  right: 6px;
+  color: rgba(188, 239, 215, 0.6);
+}
+
+/* 聊天名字标签：气泡内容 overflow:hidden，名字改挂在行上，避免被裁掉 */
+.lyrics-overlay[data-mode='chat'] .lyrics-line .lyrics-text::before {
+  content: none;
+  display: none;
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line[data-side='left']::after {
+  content: var(--chat-ta-name, 'TA');
+  display: block;
+  position: absolute;
+  left: 40px;
+  top: 3px;
+  width: auto;
+  height: auto;
+  bottom: auto;
+  background: none;
+  box-shadow: none;
+  transform: none;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: rgba(210, 218, 238, 0.56);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: none;
+}
+
+.lyrics-overlay[data-mode='chat'] .lyrics-line[data-side='right']::after {
+  content: var(--chat-me-name, '我');
+  display: block;
+  position: absolute;
+  right: 40px;
+  left: auto;
+  top: 3px;
+  width: auto;
+  height: auto;
+  bottom: auto;
+  background: none;
+  box-shadow: none;
+  transform: none;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: rgba(188, 239, 215, 0.62);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: none;
+}

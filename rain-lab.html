@@ -1,0 +1,1334 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>真实感雨效 · RAIN LAB</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #04060c;
+        font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+        color: #dbe7ff;
+      }
+      #stage {
+        position: fixed;
+        inset: 0;
+      }
+      #rain {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* ---------------- 控制面板 ---------------- */
+      .hud {
+        position: fixed;
+        left: 20px;
+        bottom: 20px;
+        z-index: 5;
+        width: 250px;
+        padding: 14px 16px 12px;
+        border-radius: 16px;
+        background: linear-gradient(180deg, rgba(16, 24, 40, 0.62), rgba(8, 12, 22, 0.76));
+        border: 1px solid rgba(148, 186, 255, 0.16);
+        box-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(16px) saturate(1.2);
+        -webkit-backdrop-filter: blur(16px) saturate(1.2);
+        transition: opacity 0.35s ease, transform 0.35s ease;
+      }
+      .hud.hidden {
+        opacity: 0;
+        transform: translateY(14px) scale(0.98);
+        pointer-events: none;
+      }
+      .hud h1 {
+        margin: 0 0 3px;
+        font-size: 12.5px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        color: #eaf1ff;
+      }
+      .hud .sub {
+        margin: 0 0 13px;
+        font-size: 10.5px;
+        letter-spacing: 0.05em;
+        color: rgba(158, 182, 224, 0.7);
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 9px 0;
+        font-size: 11.5px;
+        color: rgba(198, 214, 244, 0.86);
+      }
+      .row output {
+        min-width: 26px;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        color: #8fb6ff;
+      }
+      input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 128px;
+        height: 3px;
+        border-radius: 3px;
+        background: linear-gradient(90deg, #5f8fe8, rgba(120, 150, 210, 0.22));
+        outline: none;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 11px;
+        height: 11px;
+        border: 0;
+        border-radius: 50%;
+        background: #dce8ff;
+        box-shadow: 0 0 0 3px rgba(120, 164, 255, 0.22), 0 2px 8px rgba(0, 0, 0, 0.6);
+        cursor: pointer;
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 11px;
+        height: 11px;
+        border: 0;
+        border-radius: 50%;
+        background: #dce8ff;
+        cursor: pointer;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 11px;
+      }
+      .chip {
+        padding: 5px 10px;
+        font: inherit;
+        font-size: 11px;
+        color: rgba(198, 214, 244, 0.82);
+        background: rgba(120, 150, 210, 0.1);
+        border: 1px solid rgba(148, 186, 255, 0.16);
+        border-radius: 999px;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .chip:hover {
+        border-color: rgba(160, 200, 255, 0.45);
+      }
+      .chip[aria-pressed="true"] {
+        color: #08101f;
+        background: #b9d2ff;
+        border-color: #d3e2ff;
+      }
+      .hint {
+        margin: 11px 0 0;
+        font-size: 10px;
+        line-height: 1.75;
+        color: rgba(150, 174, 214, 0.52);
+      }
+      kbd {
+        padding: 0 4px;
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 9.5px;
+        border-radius: 4px;
+        background: rgba(150, 180, 230, 0.14);
+      }
+      @media (max-width: 640px) {
+        .hud {
+          left: 12px;
+          right: 12px;
+          bottom: 12px;
+          width: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage"><canvas id="rain"></canvas></div>
+
+    <div class="hud" id="hud">
+      <h1>雨 · RAIN LAB</h1>
+      <p class="sub">分层景深 · 运动模糊 · 溅射涟漪 · 湿地倒影</p>
+
+      <label class="row">
+        雨量
+        <input id="intensity" type="range" min="10" max="100" step="1" value="62" />
+        <output id="outIntensity">62</output>
+      </label>
+      <label class="row">
+        风
+        <input id="wind" type="range" min="-100" max="100" step="1" value="45" />
+        <output id="outWind">45</output>
+      </label>
+      <label class="row">
+        水花
+        <input id="splash" type="range" min="20" max="200" step="5" value="100" />
+        <output id="outSplash">100</output>
+      </label>
+
+      <div class="chips">
+        <button class="chip" id="chipLightning" aria-pressed="true">闪电</button>
+        <button class="chip" id="chipNaive" aria-pressed="false">粒子雨对比</button>
+        <button class="chip" id="chipReseed">换夜景</button>
+      </div>
+
+      <p class="hint">
+        <kbd>空格</kbd> 暂停 · <kbd>H</kbd> 收起面板<br />
+        “粒子雨对比”只换雨滴画法，场景不变 —— 差别一眼可见
+      </p>
+    </div>
+
+    <script>
+      (() => {
+        'use strict';
+
+        /* ============================================================
+         * 0. 基础状态
+         * ============================================================ */
+        const cvs = document.getElementById('rain');
+        const ctx = cvs.getContext('2d', { alpha: false });
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        const params = {
+          intensity: reducedMotion ? 0.45 : 0.62, // 0.1 ~ 1
+          wind: 0.45, // -1 ~ 1
+          splash: 1, // 水花 / 水环强度 0.2 ~ 2
+          lightning: !reducedMotion,
+          naive: false, // 对比模式：典型的“粒子雨”
+          adaptive: true, // 掉帧时自动减少雨滴数量
+          grain: true, // 胶片颗粒（低端设备可关）
+        };
+
+        const R = { W: 0, H: 0, dpr: 1, horizon: 0 };
+        let time = 0; // 累计秒
+        let paused = false;
+        let quality = 1; // 自适应画质 0.45~1
+        let frameAvg = 16; // 平滑帧耗时 (ms)
+        let sceneSeed = 20251027;
+
+        const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+
+        // 可复现随机（换夜景时只换 seed）
+        function mulberry32(seed) {
+          let a = seed >>> 0;
+          return function next() {
+            a = (a + 0x6d2b79f5) | 0;
+            let t = Math.imul(a ^ (a >>> 15), 1 | a);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          };
+        }
+
+        // 深度 → 落地高度：远处雨滴落在地平线附近，近处雨滴落在画面底部
+        function groundY(depth) {
+          const g = R.horizon + (R.H - R.horizon) * Math.pow(depth, 1.55);
+          return Math.min(g, R.H - 4);
+        }
+
+        /* ============================================================
+         * 1. 静态夜景（一次性烘焙到离屏画布）
+         *    —— 倒影直接从这里采样，所以它必须是一张“干净”的场景图
+         * ============================================================ */
+        const world = document.createElement('canvas');
+        const lampSpots = [];
+
+        function buildWorld() {
+          const { W, H, dpr } = R;
+          world.width = Math.max(1, Math.round(W * dpr));
+          world.height = Math.max(1, Math.round(H * dpr));
+          const g = world.getContext('2d');
+          g.setTransform(dpr, 0, 0, dpr, 0, 0);
+          g.clearRect(0, 0, W, H);
+
+          // --- 夜空 ---
+          const sky = g.createLinearGradient(0, 0, 0, R.horizon);
+          sky.addColorStop(0, '#04060d');
+          sky.addColorStop(0.45, '#080f1d');
+          sky.addColorStop(0.8, '#101c31');
+          sky.addColorStop(1, '#1b2b46');
+          g.fillStyle = sky;
+          g.fillRect(0, 0, W, R.horizon + 2);
+
+          const rand = mulberry32(sceneSeed);
+
+          // --- 云：若干超软径向渐变堆出体积感 ---
+          for (let i = 0; i < 30; i++) {
+            const x = rand() * W;
+            const y = rand() * R.horizon * 0.75;
+            const rr = (70 + rand() * 220) * (0.55 + W / 2400);
+            const a = 0.05 + rand() * 0.085;
+            const grd = g.createRadialGradient(x, y, 0, x, y, rr);
+            grd.addColorStop(0, `rgba(78,102,150,${a})`);
+            grd.addColorStop(0.5, `rgba(46,64,101,${a * 0.55})`);
+            grd.addColorStop(1, 'rgba(18,26,44,0)');
+            g.fillStyle = grd;
+            g.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+          }
+
+          // --- 月亮 ---
+          const mx = W * 0.77;
+          const my = R.horizon * 0.24;
+          const mr = Math.min(W, H) * 0.033;
+          drawMoon(g, mx, my, mr);
+
+          // 月亮前的薄云：让月盘不是“贴上去的圆”
+          for (let i = 0; i < 3; i++) {
+            const cy = my - mr * 0.8 + i * mr * 0.9;
+            const cw = mr * (7 + i * 2.2);
+            g.save();
+            g.translate(mx + (i - 1) * mr * 1.6, cy);
+            g.scale(1, 0.16);
+            const cg = g.createRadialGradient(0, 0, 0, 0, 0, cw);
+            cg.addColorStop(0, 'rgba(30,46,76,0.34)');
+            cg.addColorStop(0.55, 'rgba(26,40,66,0.16)');
+            cg.addColorStop(1, 'rgba(20,32,54,0)');
+            g.fillStyle = cg;
+            g.beginPath();
+            g.arc(0, 0, cw, 0, Math.PI * 2);
+            g.fill();
+            g.restore();
+          }
+
+          // --- 远山（一层很淡的剪影，给画面加纵深） ---
+          g.fillStyle = '#0a1322';
+          g.beginPath();
+          g.moveTo(0, R.horizon);
+          for (let x = 0; x <= W + 40; x += 36) {
+            const y = R.horizon - 16 - Math.sin(x * 0.0042 + sceneSeed * 0.001) * 20 - Math.sin(x * 0.013) * 7;
+            g.lineTo(x, y);
+          }
+          g.lineTo(W, R.horizon);
+          g.closePath();
+          g.fill();
+
+          // --- 城市剪影：远排（灰雾里） + 近排（更黑、更亮窗） ---
+          drawSkyline(g, rand);
+
+          // --- 路灯：暖色光斑会被水面倒影拉成竖向光柱 ---
+          drawLamps(g, rand);
+        }
+
+        function drawMoon(g, x, y, r) {
+          // 大气光晕：多层极淡，避免出现同心圆 banding
+          const halo = g.createRadialGradient(x, y, r * 0.2, x, y, r * 12);
+          halo.addColorStop(0, 'rgba(190,212,255,0.20)');
+          halo.addColorStop(0.08, 'rgba(160,190,245,0.11)');
+          halo.addColorStop(0.2, 'rgba(126,160,226,0.065)');
+          halo.addColorStop(0.4, 'rgba(96,130,196,0.03)');
+          halo.addColorStop(0.7, 'rgba(70,100,165,0.012)');
+          halo.addColorStop(1, 'rgba(50,76,140,0)');
+          g.fillStyle = halo;
+          g.fillRect(x - r * 12, y - r * 12, r * 24, r * 24);
+
+          // 月盘：边缘不留硬边，让薄云自然吃掉轮廓
+          const disc = g.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r * 1.12);
+          disc.addColorStop(0, 'rgba(248,251,255,0.95)');
+          disc.addColorStop(0.55, 'rgba(228,236,252,0.88)');
+          disc.addColorStop(0.8, 'rgba(200,214,242,0.55)');
+          disc.addColorStop(1, 'rgba(178,196,232,0)');
+          g.fillStyle = disc;
+          g.beginPath();
+          g.arc(x, y, r * 1.12, 0, Math.PI * 2);
+          g.fill();
+        }
+
+        function drawSkyline(g, rand) {
+          const hz = R.horizon;
+          const rows = [
+            // 远排：低、灰蓝、窗少
+            { n: 26, wMin: 24, wMax: 62, hMin: 22, hMax: 118, base: hz - 6, fill: '#0b1524', rim: 0.05, winChance: 0.08, winA: 0.2, warm: 0.3 },
+            // 近排：高、近黑、窗多且亮
+            { n: 16, wMin: 46, wMax: 118, hMin: 64, hMax: 244, base: hz + 2, fill: '#060c17', rim: 0.09, winChance: 0.16, winA: 0.42, warm: 0.45 },
+          ];
+
+          for (const row of rows) {
+            for (let i = 0; i < row.n; i++) {
+              const bw = row.wMin + rand() * (row.wMax - row.wMin);
+              const bh = row.hMin + rand() * (row.hMax - row.hMin);
+              const bx = rand() * (R.W + 80) - 40;
+              const by = row.base - bh;
+
+              g.fillStyle = row.fill;
+              g.fillRect(bx, by, bw, bh + 6);
+
+              // 顶部轮廓受月光勾勒
+              g.fillStyle = `rgba(150,180,230,${row.rim})`;
+              g.fillRect(bx, by, bw, 1);
+
+              // 天线
+              if (rand() > 0.78) {
+                g.fillStyle = 'rgba(120,150,200,0.12)';
+                g.fillRect(bx + bw * (0.3 + rand() * 0.4), by - 20 - rand() * 26, 1, 24);
+              }
+
+              // 窗户：网格 + 随机点亮
+              const stepX = 7 + rand() * 4;
+              const stepY = 9 + rand() * 5;
+              for (let wy = by + 6; wy < row.base - 4; wy += stepY) {
+                for (let wx = bx + 5; wx < bx + bw - 4; wx += stepX) {
+                  if (rand() > row.winChance) continue;
+                  const a = row.winA * (0.35 + rand() * 0.65);
+                  const warm = rand() < row.warm;
+                  g.fillStyle = warm ? `rgba(255,198,126,${a})` : `rgba(176,208,255,${a * 0.8})`;
+                  g.fillRect(wx, wy, 2, 2.6);
+                }
+              }
+            }
+          }
+
+          // 地平线上的城市光污染
+          const glow = g.createLinearGradient(0, hz - 90, 0, hz + 4);
+          glow.addColorStop(0, 'rgba(120,150,205,0)');
+          glow.addColorStop(0.72, 'rgba(126,152,206,0.10)');
+          glow.addColorStop(1, 'rgba(150,178,230,0.20)');
+          g.fillStyle = glow;
+          g.fillRect(0, hz - 90, R.W, 94);
+        }
+
+        function drawLamps(g, rand) {
+          lampSpots.length = 0;
+          const hz = R.horizon;
+          const spots = [0.13, 0.3, 0.47, 0.9];
+          for (const p of spots) {
+            const x = p * R.W + (rand() - 0.5) * 26;
+            const h = 28 + rand() * 22;
+            const topY = hz - h;
+
+            // 灯杆
+            g.strokeStyle = 'rgba(5,9,16,0.92)';
+            g.lineWidth = 1.6;
+            g.beginPath();
+            g.moveTo(x, hz);
+            g.lineTo(x, topY);
+            g.stroke();
+
+            // 灯光光晕
+            const gr = g.createRadialGradient(x, topY, 0, x, topY, 30 + rand() * 14);
+            gr.addColorStop(0, 'rgba(255,226,176,0.5)');
+            gr.addColorStop(0.3, 'rgba(255,192,124,0.17)');
+            gr.addColorStop(1, 'rgba(255,170,96,0)');
+            g.fillStyle = gr;
+            g.fillRect(x - 46, topY - 46, 92, 92);
+
+            // 灯芯
+            g.fillStyle = 'rgba(255,240,206,0.92)';
+            g.beginPath();
+            g.arc(x, topY, 2.1, 0, Math.PI * 2);
+            g.fill();
+
+            lampSpots.push({ x, y: topY });
+          }
+        }
+
+        /* ============================================================
+         * 2. 雨滴：分层 = 景深
+         *    depth 0（远）→ 1（近）：越近 → 越快 / 越长 / 越粗 / 越亮
+         * ============================================================ */
+        const drops = [];
+
+        function makeDrop(initial = false) {
+          const depth = Math.pow(Math.random(), 1.55); // 偏向远处的雨丝，近处少量
+          const vy = 180 + 1080 * Math.pow(depth, 1.15); // 视差速度
+          return {
+            d: depth,
+            vy,
+            x: Math.random() * (R.W + 200) - 100,
+            y: initial ? Math.random() * groundY(depth) - 40 : -Math.random() * 160 - 20,
+            seed: Math.random() * 100,
+            jitter: 0.72 + Math.random() * 0.62,
+            a: 0.85 + Math.random() * 0.3,
+          };
+        }
+
+        function targetCount() {
+          const area = R.W * R.H;
+          const budget = Math.min(2400, (area / 640) * quality);
+          return Math.round(clamp(params.intensity * budget, 40, 2400));
+        }
+
+        function syncCount(initial = false) {
+          const target = targetCount();
+          while (drops.length < target) drops.push(makeDrop(initial));
+          if (drops.length > target) drops.length = target;
+        }
+
+        function resetDrops() {
+          drops.length = 0;
+          syncCount(true);
+        }
+
+        /* ============================================================
+         * 3. 落点：圆形水环（波列） + 水花弹起
+         * ============================================================ */
+        const ripples = [];
+        const splash = [];
+        const glints = [];
+        let ambientAcc = 0;
+
+        // 一圈水环；带 delay 可形成「同一落点、先后扩散的波列」
+        function spawnRing(x, y, scale, alpha, delay = 0, squash = 0.5) {
+          if (ripples.length > 200) return;
+          ripples.push({
+            x,
+            y,
+            max: (10 + Math.random() * 18) * scale,
+            life: 0,
+            delay,
+            ttl: 0.72 + Math.random() * 0.6,
+            w: 0.8 + Math.random() * 0.9,
+            a: alpha,
+            squash,
+            flash: 0,
+          });
+        }
+
+        // 落点白闪：让雨滴在水面上“点”一下
+        function spawnFlash(x, y, scale, squash = 0.55) {
+          if (ripples.length > 200) return;
+          ripples.push({
+            x,
+            y,
+            max: (5 + Math.random() * 8) * scale,
+            life: 0,
+            delay: 0,
+            ttl: 0.13,
+            w: 1.6 * scale,
+            a: 0.42,
+            squash,
+            flash: 1,
+          });
+        }
+
+        // 一次落水：中心水柱 + 扇形溅起的水珠 + 三圈扩散波
+        function spawnImpact(x, y, depth) {
+          const s = params.splash;
+          if (s <= 0.05) return;
+
+          // 中心上冲的水柱（Worthington jet）
+          splash.push({
+            x,
+            y,
+            vx: (Math.random() - 0.5) * 26,
+            vy: -(90 + 270 * depth) * (0.85 + Math.random() * 0.35) * s,
+            life: 0,
+            ttl: 0.3 + Math.random() * 0.26,
+            size: (1.1 + 1.6 * depth) * s,
+            jet: 1,
+          });
+
+          // 扇形溅起的水珠
+          const n = 4 + Math.floor(Math.random() * 4);
+          for (let i = 0; i < n; i++) {
+            const ang = -Math.PI * 0.5 + (Math.random() - 0.5) * 2.1;
+            const sp = (70 + Math.random() * 250) * (0.45 + depth) * s;
+            splash.push({
+              x,
+              y,
+              vx: Math.cos(ang) * sp,
+              vy: Math.sin(ang) * sp,
+              life: 0,
+              ttl: 0.24 + Math.random() * 0.34,
+              size: (0.5 + Math.random() * 1.0) * (0.5 + depth) * s,
+              jet: 0,
+            });
+          }
+          if (splash.length > 640) splash.splice(0, splash.length - 640);
+
+          const sq = 0.22 + 0.48 * depth;
+          spawnFlash(x, y, 0.5 + depth * 1.7, sq);
+          // 波列：三圈先后扩散，越外圈越淡
+          spawnRing(x, y, 0.7 + depth * 1.8, 0.26 + 0.16 * depth, 0, sq);
+          spawnRing(x, y, 1.15 + depth * 2.4, 0.13 + 0.08 * depth, 0.09 + Math.random() * 0.06, sq);
+          spawnRing(x, y, 1.6 + depth * 3.0, 0.07 + 0.04 * depth, 0.2 + Math.random() * 0.1, sq);
+        }
+
+        // 水面上的随机雨点（保证画面里到处都有水环）
+        function ambientImpact() {
+          const depth = 0.08 + 0.92 * Math.pow(Math.random(), 1.45);
+          const y = groundY(depth) + (Math.random() - 0.5) * 6;
+          spawnImpact(Math.random() * R.W, y, depth);
+        }
+
+        /* ============================================================
+         * 4. 闪电
+         * ============================================================ */
+        let flash = 0;
+        let nextBolt = 4 + Math.random() * 6;
+        const boltPulses = [];
+
+        function triggerBolt() {
+          flash = Math.max(flash, 1);
+          boltPulses.push({ at: time + 0.075, v: 0.55 }, { at: time + 0.16, v: 0.85 });
+        }
+
+        function updateWeather(dt) {
+          if (params.lightning) {
+            nextBolt -= dt;
+            if (nextBolt <= 0) {
+              triggerBolt();
+              nextBolt = 5.5 + Math.random() * 9;
+            }
+          }
+          for (let i = boltPulses.length - 1; i >= 0; i--) {
+            if (time >= boltPulses[i].at) {
+              flash = Math.max(flash, boltPulses[i].v);
+              boltPulses.splice(i, 1);
+            }
+          }
+          flash *= Math.exp(-dt * 6.2);
+          if (flash < 0.0015) flash = 0;
+        }
+
+        /* ============================================================
+         * 5. 渲染：倒影 / 水面
+         * ============================================================ */
+        function drawReflection() {
+          const { W, H } = R;
+          const hz = R.horizon;
+          const k = (H - hz) / hz; // 竖直压缩：整片天空映射进水面
+          const strip = 2;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(0, hz, W, H - hz);
+          ctx.clip();
+
+          // 水面底色：地平线附近接近天空色，向下逐渐变深（湿沥青）
+          const base = ctx.createLinearGradient(0, hz, 0, H);
+          base.addColorStop(0, '#243652');
+          base.addColorStop(0.16, '#17253d');
+          base.addColorStop(0.5, '#0b1422');
+          base.addColorStop(1, '#04070d');
+          ctx.fillStyle = base;
+          ctx.fillRect(0, hz, W, H - hz);
+
+          // 逐条带采样场景：横向整条位移 = 水面波纹
+          for (let y = hz; y < H; y += strip) {
+            const dep = (y - hz) / (H - hz); // 0 地平线 → 1 近处
+            const srcY = hz - (y - hz) / k;
+            if (srcY < 0) break;
+
+            // 长波涌动（水面整体起伏）+ 细碎波纹（雨点打出来的抖动）
+            const swellX = Math.sin(y * 0.011 + time * 0.9) * (4 + 12 * dep);
+            const swellY = Math.sin(y * 0.013 + time * 0.75) * 4.2;
+            const wob = Math.sin(y * 0.085 - time * 3.4) * 1.3 + swellY;
+
+            const waveX =
+              swellX +
+              Math.sin(y * 0.052 + time * 2.2) * (1.2 + 8.5 * dep * dep) +
+              Math.sin(y * 0.17 - time * 4.0) * (0.5 + 2.6 * dep);
+
+            // 掠射角：越靠近地平线倒影越强（菲涅耳）
+            const alpha = (0.94 - 0.52 * dep) * (0.95 + 0.05 * Math.sin(y * 0.02 + time * 0.7));
+
+            ctx.globalAlpha = clamp(alpha, 0, 1);
+            const sx = Math.max(0, srcY + wob) * R.dpr;
+            const sh = strip * R.dpr;
+            ctx.drawImage(world, 0, sx, world.width, sh, waveX - 12, y, W + 24, strip);
+          }
+
+          // 水色覆盖：远处的反射盖得少，近处压暗
+          const veil = ctx.createLinearGradient(0, hz, 0, H);
+          veil.addColorStop(0, 'rgba(22,36,58,0.10)');
+          veil.addColorStop(0.22, 'rgba(11,19,33,0.36)');
+          veil.addColorStop(1, 'rgba(2,4,9,0.70)');
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = veil;
+          ctx.fillRect(0, hz, W, H - hz);
+
+          // 湿地面上的“竖向光柱”：灯光在水面的拉丝倒影
+          drawLightColumns(k);
+
+          // 地平线亮边：远处水面反射天空
+          const line = ctx.createLinearGradient(0, hz - 6, 0, hz + 16);
+          line.addColorStop(0, 'rgba(160,192,240,0.02)');
+          line.addColorStop(0.35, 'rgba(176,204,246,0.12)');
+          line.addColorStop(1, 'rgba(120,158,220,0)');
+          ctx.fillStyle = line;
+          ctx.fillRect(0, hz - 6, W, 22);
+
+          ctx.restore();
+        }
+
+        // 湿地面/水面上的竖向拉丝倒影：真实灯光在粗糙水面会被拉成光柱
+        function drawLightColumns(k) {
+          const { W } = R;
+          const hz = R.horizon;
+          const cols = [];
+          for (const l of lampSpots) {
+            cols.push({ x: l.x, len: (hz - l.y) * k, w: 26, rgb: '255,190,124', a: 0.24 });
+          }
+          const moonY = hz * 0.24;
+          cols.push({ x: W * 0.77, len: (hz - moonY) * k, w: 40, rgb: '196,218,255', a: 0.16 });
+
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          for (const c of cols) {
+            const len = Math.max(60, c.len);
+            const wob = Math.sin(time * 1.6 + c.x * 0.03) * (2 + len * 0.012);
+            ctx.save();
+            ctx.translate(c.x + wob, hz + len * 0.12);
+            ctx.scale(1, (len * 0.92) / c.w);
+            const g = ctx.createRadialGradient(0, 0, 0, 0, 0, c.w);
+            g.addColorStop(0, `rgba(${c.rgb},${c.a})`);
+            g.addColorStop(0.28, `rgba(${c.rgb},${c.a * 0.62})`);
+            g.addColorStop(0.55, `rgba(${c.rgb},${c.a * 0.26})`);
+            g.addColorStop(0.8, `rgba(${c.rgb},${c.a * 0.07})`);
+            g.addColorStop(1, `rgba(${c.rgb},0)`);
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(0, 0, c.w, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+          ctx.restore();
+        }
+
+        function drawRipples() {
+          // 水环（描边）与落点白闪（填充）各自分桶，一帧十几次绘制
+          const strokes = new Map();
+          const glows = new Map();
+          const fills = new Map();
+          for (const r of ripples) {
+            if (r.life < r.delay) continue;
+            const p = (r.life - r.delay) / r.ttl;
+            if (p > 1) continue;
+
+            if (r.flash) {
+              // 落点白闪：一小片迅速扩散又消失的亮斑
+              const rad = r.max * (0.35 + 0.9 * p);
+              const a = (1 - p) * r.a;
+              if (a <= 0.01) continue;
+              const qa = Math.round(a * 10) / 10;
+              let b = fills.get(qa);
+              if (!b) {
+                b = { a: qa, path: new Path2D() };
+                fills.set(qa, b);
+              }
+              b.path.moveTo(r.x + rad, r.y);
+              b.path.ellipse(r.x, r.y, rad, rad * r.squash, 0, 0, Math.PI * 2);
+              continue;
+            }
+
+            // 水环：由内向外扩散，越扩越淡、越细
+            const rad = r.max * (1 - Math.pow(1 - p, 2.6));
+            const a = Math.pow(1 - p, 1.7) * r.a;
+            if (a <= 0.004 || rad < 0.6) continue;
+            const qw = Math.round(Math.max(0.45, r.w * (1 - p * 0.6)) * 2) / 2;
+
+            // 柔光：同一圈画一道宽而淡的底，消掉“线框圆”的塑料感
+            const qa = Math.round(a * 14) / 14;
+            let b = strokes.get(qa + '|' + qw);
+            if (!b) {
+              b = { a: qa, w: qw, path: new Path2D() };
+              strokes.set(qa + '|' + qw, b);
+            }
+            b.path.moveTo(r.x + rad, r.y);
+            b.path.ellipse(r.x, r.y, rad, rad * r.squash, 0, 0, Math.PI * 2);
+
+            const ga = Math.round(a * 0.24 * 16) / 16;
+            const gw = Math.round(qw * 4.5 * 2) / 2;
+            let g = glows.get(ga + '|' + gw);
+            if (!g) {
+              g = { a: ga, w: gw, path: new Path2D() };
+              glows.set(ga + '|' + gw, g);
+            }
+            g.path.moveTo(r.x + rad, r.y);
+            g.path.ellipse(r.x, r.y, rad, rad * r.squash, 0, 0, Math.PI * 2);
+          }
+
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          for (const b of fills.values()) {
+            ctx.fillStyle = `rgba(200,224,255,${b.a.toFixed(3)})`;
+            ctx.fill(b.path);
+          }
+          for (const g of glows.values()) {
+            ctx.strokeStyle = `rgba(150,186,240,${g.a.toFixed(3)})`;
+            ctx.lineWidth = g.w;
+            ctx.stroke(g.path);
+          }
+          for (const b of strokes.values()) {
+            ctx.strokeStyle = `rgba(170,200,245,${b.a.toFixed(3)})`;
+            ctx.lineWidth = b.w;
+            ctx.stroke(b.path);
+          }
+          ctx.restore();
+        }
+
+        function drawSplash() {
+          const buckets = new Map();
+          ctx.lineCap = 'round';
+          for (const s of splash) {
+            const p = s.life / s.ttl;
+            const fade = Math.pow(1 - p, 1.3);
+            const a = fade * (s.jet ? 0.8 : 0.55);
+            if (a < 0.012) continue;
+
+            const sp = Math.hypot(s.vx, s.vy) || 1;
+            const len = clamp(sp * 0.02, 1.5, 14);
+            const qa = Math.round(a * 12) / 12;
+            const qw = Math.round(Math.max(0.65, s.size * (s.jet ? 1.5 : 0.9)) * 2) / 2;
+            const key = qa + '|' + qw;
+            let b = buckets.get(key);
+            if (!b) {
+              b = { a: qa, w: qw, path: new Path2D() };
+              buckets.set(key, b);
+            }
+            b.path.moveTo(s.x, s.y);
+            b.path.lineTo(s.x - (s.vx / sp) * len, s.y - (s.vy / sp) * len);
+          }
+
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          for (const b of buckets.values()) {
+            ctx.strokeStyle = `rgba(212,230,255,${b.a.toFixed(3)})`;
+            ctx.lineWidth = b.w;
+            ctx.stroke(b.path);
+          }
+          ctx.restore();
+        }
+
+        /* ============================================================
+         * 6. 渲染：雨
+         * ============================================================ */
+        function drawRain(dt) {
+          const { W } = R;
+          const light = 1 + flash * 1.3;
+          const gust = 0.82 + 0.36 * Math.sin(time * 0.23 + 1.2) + 0.16 * Math.sin(time * 0.57 + 4.1);
+          const px = clamp(W / 1500, 0.62, 1.25); // 大屏雨丝略粗
+
+          // 按 (线宽, 透明度) 分桶，一帧只需几十次 stroke
+          const tailPaths = new Map();
+          const headPaths = new Map();
+          const glowPaths = new Map();
+          const bucket = (map, w, a) => {
+            const qw = Math.round(w * 4) / 4;
+            const qa = Math.round(a * 40) / 40;
+            const key = qw + '|' + qa;
+            let b = map.get(key);
+            if (!b) {
+              b = { w: qw, a: qa, path: new Path2D() };
+              map.set(key, b);
+            }
+            return b;
+          };
+
+          for (let i = 0; i < drops.length; i++) {
+            const d = drops[i];
+
+            // 风 + 湍流：每滴自己的摆动相位，形成轻微蜿蜒
+            const vx =
+              params.wind * gust * (110 + 560 * d.d) +
+              Math.sin(time * 1.9 + d.seed) * (6 + 22 * d.d);
+            const vy = d.vy;
+
+            d.x += vx * dt;
+            d.y += vy * dt;
+
+            // 落地 → 水花/水环 → 回收
+            const gy = groundY(d.d);
+            if (d.y > gy) {
+              // 越靠近镜头的雨滴，砸出来的水花越大；远处只留一圈小水环
+              if (d.d > 0.14 && Math.random() < 0.03 + 0.16 * d.d) {
+                spawnImpact(d.x, gy, d.d);
+              }
+              d.y = -30 - Math.random() * 160;
+              d.x = Math.random() * (W + 200) - 100;
+              d.d = Math.pow(Math.random(), 1.55);
+              d.vy = 180 + 1080 * Math.pow(d.d, 1.15);
+              d.jitter = 0.72 + Math.random() * 0.62;
+              continue;
+            }
+            if (d.x < -120) d.x += W + 240;
+            else if (d.x > W + 120) d.x -= W + 240;
+
+            if (params.naive) continue;
+
+            // 运动模糊的长度 = 速度 × 曝光时间（远处雨丝也别缩成小点）
+            const sp = Math.hypot(vx, vy);
+            const ux = vx / sp;
+            const uy = vy / sp;
+            const len = Math.max(3.2, sp * (0.021 + 0.023 * d.d) * d.jitter);
+            if (len < 1.2) continue;
+
+            const hx = d.x;
+            const hy = d.y;
+            const mX = hx - ux * len * 0.45;
+            const mY = hy - uy * len * 0.45;
+            const tX = hx - ux * len;
+            const tY = hy - uy * len;
+
+            const width = (0.45 + 1.45 * d.d) * px;
+            const alpha = clamp((0.07 + 0.27 * d.d) * light * d.a, 0.02, 0.9);
+
+            const hair = bucket(headPaths, width, alpha);
+            const trail = bucket(tailPaths, width, alpha * 0.4);
+
+            hair.path.moveTo(hx, hy);
+            hair.path.lineTo(mX, mY);
+            trail.path.moveTo(mX, mY);
+            trail.path.lineTo(tX, tY);
+
+            // 近处雨滴在空气里也有一圈极淡的光晕（折射/散焦）
+            if (d.d > 0.7) {
+              const glow = bucket(glowPaths, width * 2.8, alpha * 0.16);
+              glow.path.moveTo(hx, hy);
+              glow.path.lineTo(tX, tY);
+            }
+          }
+
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+
+          for (const b of glowPaths.values()) {
+            ctx.strokeStyle = `rgba(160,196,255,${b.a.toFixed(3)})`;
+            ctx.lineWidth = b.w;
+            ctx.stroke(b.path);
+          }
+          for (const b of tailPaths.values()) {
+            ctx.strokeStyle = `rgba(198,220,255,${b.a.toFixed(3)})`;
+            ctx.lineWidth = b.w;
+            ctx.stroke(b.path);
+          }
+          for (const b of headPaths.values()) {
+            ctx.strokeStyle = `rgba(206,226,255,${b.a.toFixed(3)})`;
+            ctx.lineWidth = b.w;
+            ctx.stroke(b.path);
+          }
+          ctx.restore();
+        }
+
+        // 对比用的“典型粒子雨”：统一速度、统一透明度、没有景深
+        const naiveDrops = [];
+        function initNaive() {
+          naiveDrops.length = 0;
+          const n = 460;
+          for (let i = 0; i < n; i++) {
+            naiveDrops.push({ x: Math.random(), y: Math.random(), s: Math.random() });
+          }
+        }
+        function drawNaiveRain(dt) {
+          const { W, H } = R;
+          ctx.save();
+          ctx.strokeStyle = 'rgba(219,231,255,0.36)';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          for (const p of naiveDrops) {
+            p.y += 0.62 * dt;
+            if (p.y > 1.04) {
+              p.y = -0.05;
+              p.x = Math.random();
+            }
+            const x = p.x * W;
+            const y = p.y * H;
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + 6, y + 7);
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        /* ============================================================
+         * 7. 渲染：雾 / 灯光散射 / 闪电 / 暗角 / 颗粒
+         * ============================================================ */
+        const mistBlobs = [];
+        function initMist() {
+          mistBlobs.length = 0;
+          const rand = mulberry32(sceneSeed + 7);
+          for (let i = 0; i < 7; i++) {
+            mistBlobs.push({
+              x: rand(),
+              y: 0.32 + rand() * 0.3, // 只在地平线附近，别糊住整个水面
+              r: 0.13 + rand() * 0.16,
+              sp: 0.003 + rand() * 0.009,
+              a: 0.022 + rand() * 0.03,
+            });
+          }
+        }
+
+        function drawFog(strength) {
+          const { W, H } = R;
+          const hz = R.horizon;
+
+          // 地平线上的横向雾带
+          for (let i = 0; i < 3; i++) {
+            const y = hz - 60 + i * 42;
+            const a = (0.085 - i * 0.02) * strength;
+            const grd = ctx.createLinearGradient(0, y - 76, 0, y + 76);
+            grd.addColorStop(0, 'rgba(146,176,222,0)');
+            grd.addColorStop(0.5, `rgba(146,176,222,${a})`);
+            grd.addColorStop(1, 'rgba(146,176,222,0)');
+            ctx.fillStyle = grd;
+            ctx.fillRect(0, y - 76, W, 152);
+          }
+
+          // 缓慢漂移的雾团：压扁成横向雾带，避免出现“大圆盘”
+          for (const m of mistBlobs) {
+            const x = ((m.x + time * m.sp) % 1.15) * W - W * 0.08;
+            const y = m.y * H;
+            const rad = m.r * W;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(1, 0.34);
+            const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, rad);
+            grd.addColorStop(0, `rgba(158,186,230,${m.a * strength})`);
+            grd.addColorStop(0.5, `rgba(120,150,200,${m.a * strength * 0.38})`);
+            grd.addColorStop(1, 'rgba(90,118,170,0)');
+            ctx.fillStyle = grd;
+            ctx.beginPath();
+            ctx.arc(0, 0, rad, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+
+        function drawLightScatter() {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          for (const l of lampSpots) {
+            const a = 0.05 + flash * 0.05;
+            const grd = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, 90);
+            grd.addColorStop(0, `rgba(255,196,130,${a})`);
+            grd.addColorStop(0.4, `rgba(255,168,96,${a * 0.35})`);
+            grd.addColorStop(1, 'rgba(255,150,80,0)');
+            ctx.fillStyle = grd;
+            ctx.fillRect(l.x - 90, l.y - 90, 180, 180);
+          }
+          ctx.restore();
+        }
+
+        // 水面碎光：随波浪明暗起伏，让水面“一直在动”
+        function initGlints() {
+          glints.length = 0;
+          const rand = mulberry32(sceneSeed + 31);
+          for (let i = 0; i < 90; i++) {
+            const d = 0.05 + 0.95 * Math.pow(rand(), 1.15);
+            glints.push({
+              x: rand(),
+              d,
+              len: (7 + rand() * 26) * (0.35 + d),
+              ph: rand() * 6.283,
+              sp: 0.7 + rand() * 2.1,
+              w: 0.8 + rand() * 1.3,
+              drift: (rand() - 0.5) * 0.01,
+            });
+          }
+        }
+
+        function drawGlints() {
+          const { W } = R;
+          const buckets = new Map();
+          for (const g of glints) {
+            const y = groundY(g.d) + Math.sin(time * 0.9 + g.ph) * 2.5 * g.d;
+            const x = ((((g.x + time * g.drift) % 1.05) + 1.05) % 1.05) * W - W * 0.02;
+            const lum = 0.5 + 0.5 * Math.sin(time * g.sp + g.ph);
+            const a = (0.028 + 0.075 * lum) * (0.3 + g.d);
+            if (a < 0.012) continue;
+            const qa = Math.round(a * 20) / 20;
+            const qw = Math.round(g.w * 2) / 2;
+            const key = qa + '|' + qw;
+            let b = buckets.get(key);
+            if (!b) {
+              b = { a: qa, w: qw, path: new Path2D() };
+              buckets.set(key, b);
+            }
+            b.path.moveTo(x, y);
+            b.path.lineTo(x + g.len, y);
+          }
+
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.lineCap = 'round';
+          for (const b of buckets.values()) {
+            ctx.strokeStyle = `rgba(190,214,255,${b.a.toFixed(3)})`;
+            ctx.lineWidth = b.w;
+            ctx.stroke(b.path);
+          }
+          ctx.restore();
+        }
+
+        function drawLightning() {
+          if (flash <= 0.002) return;
+          const { W, H } = R;
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.fillStyle = `rgba(150,180,240,${flash * 0.1})`;
+          ctx.fillRect(0, 0, W, H);
+
+          const cx = W * (0.3 + 0.4 * ((sceneSeed % 97) / 97));
+          const cy = R.horizon * 0.18;
+          const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.85);
+          grd.addColorStop(0, `rgba(200,218,255,${flash * 0.16})`);
+          grd.addColorStop(0.35, `rgba(150,180,250,${flash * 0.05})`);
+          grd.addColorStop(1, 'rgba(90,120,200,0)');
+          ctx.fillStyle = grd;
+          ctx.fillRect(0, 0, W, H);
+          ctx.restore();
+        }
+
+        let vignette = null;
+        function buildVignette() {
+          const { W, H } = R;
+          vignette = ctx.createRadialGradient(
+            W * 0.5,
+            H * 0.44,
+            Math.min(W, H) * 0.12,
+            W * 0.52,
+            H * 0.5,
+            Math.max(W, H) * 0.8
+          );
+          vignette.addColorStop(0, 'rgba(0,0,0,0)');
+          vignette.addColorStop(0.62, 'rgba(2,4,9,0.12)');
+          vignette.addColorStop(1, 'rgba(1,2,5,0.66)');
+        }
+
+        const noiseTile = document.createElement('canvas');
+        let noisePattern = null;
+        function buildNoise() {
+          const s = 128;
+          noiseTile.width = s;
+          noiseTile.height = s;
+          const g = noiseTile.getContext('2d');
+          const img = g.createImageData(s, s);
+          for (let i = 0; i < img.data.length; i += 4) {
+            const v = (Math.random() * 255) | 0;
+            img.data[i] = v;
+            img.data[i + 1] = v;
+            img.data[i + 2] = v;
+            img.data[i + 3] = 255;
+          }
+          g.putImageData(img, 0, 0);
+          noisePattern = ctx.createPattern(noiseTile, 'repeat');
+        }
+
+        function drawGrain() {
+          if (!noisePattern) return;
+          ctx.save();
+          ctx.globalCompositeOperation = 'overlay';
+          ctx.globalAlpha = 0.055;
+          ctx.translate(-Math.random() * 128, -Math.random() * 128);
+          ctx.fillStyle = noisePattern;
+          ctx.fillRect(0, 0, R.W + 128, R.H + 128);
+          ctx.restore();
+        }
+
+        /* ============================================================
+         * 8. 主循环
+         * ============================================================ */
+        let rafId = 0;
+        let lastTs = 0;
+
+        function update(dt) {
+          time += dt;
+          updateWeather(dt);
+
+          // 水面随机雨点（对比模式下关掉，才能看清“粒子雨”差在哪）
+          if (!params.naive) {
+            ambientAcc += dt * (2 + 14 * params.intensity);
+            while (ambientAcc >= 1) {
+              ambientAcc -= 1;
+              ambientImpact();
+            }
+          }
+
+          // 水环 / 落点白闪生命周期（delay 后才开始扩散）
+          for (let i = ripples.length - 1; i >= 0; i--) {
+            const r = ripples[i];
+            r.life += dt;
+            if (r.life >= r.delay + r.ttl) ripples.splice(i, 1);
+          }
+
+          // 溅起的水珠：抛物线，受重力
+          for (let i = splash.length - 1; i >= 0; i--) {
+            const s = splash[i];
+            s.life += dt;
+            s.vy += 1500 * dt;
+            s.x += s.vx * dt;
+            s.y += s.vy * dt;
+            if (s.life >= s.ttl) splash.splice(i, 1);
+          }
+        }
+
+        function render(dt) {
+          const { W, H } = R;
+          ctx.drawImage(world, 0, 0, W, H);
+          drawReflection();
+          if (!params.naive) drawGlints();
+          drawFog(1);
+          if (params.naive) {
+            drawNaiveRain(dt);
+          } else {
+            drawRipples();
+            drawRain(dt);
+            drawSplash();
+          }
+          drawFog(0.4);
+          drawLightScatter();
+          drawLightning();
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.fillStyle = vignette;
+          ctx.fillRect(0, 0, W, H);
+          if (params.grain) drawGrain();
+        }
+
+        function loop(ts) {
+          rafId = requestAnimationFrame(loop);
+          if (!lastTs) lastTs = ts;
+          let dt = (ts - lastTs) / 1000;
+          lastTs = ts;
+          dt = clamp(dt, 0.001, 0.05);
+
+          // 自适应画质：掉帧就少画一点雨
+          frameAvg += (dt * 1000 - frameAvg) * 0.04;
+          if (params.adaptive) {
+            if (frameAvg > 23 && quality > 0.45) {
+              quality = Math.max(0.45, quality - 0.01);
+              syncCount();
+            } else if (frameAvg < 15 && quality < 1) {
+              quality = Math.min(1, quality + 0.008);
+              syncCount();
+            }
+          }
+
+          if (paused) return;
+          update(dt);
+          render(dt);
+        }
+
+        /* ============================================================
+         * 9. 尺寸 / 交互
+         * ============================================================ */
+        function resize() {
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+          R.dpr = Math.min(2, window.devicePixelRatio || 1);
+          R.W = w;
+          R.H = h;
+          R.horizon = Math.round(h * 0.6);
+          cvs.width = Math.round(w * R.dpr);
+          cvs.height = Math.round(h * R.dpr);
+          ctx.setTransform(R.dpr, 0, 0, R.dpr, 0, 0);
+          buildWorld();
+          buildVignette();
+          initMist();
+          initGlints();
+          resetDrops();
+          initNaive();
+          time = 0;
+        }
+
+        const elIntensity = document.getElementById('intensity');
+        const elOutIntensity = document.getElementById('outIntensity');
+        const elWind = document.getElementById('wind');
+        const elOutWind = document.getElementById('outWind');
+        const elSplash = document.getElementById('splash');
+        const elOutSplash = document.getElementById('outSplash');
+        const chipLightning = document.getElementById('chipLightning');
+        const chipNaive = document.getElementById('chipNaive');
+        const chipReseed = document.getElementById('chipReseed');
+        const hud = document.getElementById('hud');
+
+        elIntensity.addEventListener('input', () => {
+          params.intensity = Number(elIntensity.value) / 100;
+          elOutIntensity.textContent = elIntensity.value;
+          syncCount();
+        });
+        elWind.addEventListener('input', () => {
+          params.wind = Number(elWind.value) / 100;
+          elOutWind.textContent = elWind.value;
+        });
+        elSplash.addEventListener('input', () => {
+          params.splash = Number(elSplash.value) / 100;
+          elOutSplash.textContent = elSplash.value;
+        });
+        chipLightning.addEventListener('click', () => {
+          params.lightning = !params.lightning;
+          chipLightning.setAttribute('aria-pressed', String(params.lightning));
+        });
+        chipNaive.addEventListener('click', () => {
+          params.naive = !params.naive;
+          chipNaive.setAttribute('aria-pressed', String(params.naive));
+        });
+        chipReseed.addEventListener('click', () => {
+          sceneSeed = (Math.random() * 1e6) | 0;
+          buildWorld(); // 内部会重建 lampSpots
+          initMist();
+          initGlints();
+        });
+
+        window.addEventListener('keydown', (e) => {
+          if (e.code === 'Space') {
+            e.preventDefault();
+            paused = !paused;
+          } else if (e.key === 'h' || e.key === 'H') {
+            hud.classList.toggle('hidden');
+          }
+        });
+
+        window.addEventListener('resize', () => {
+          resize();
+          time = 0;
+        });
+
+        // 初始化
+        resize();
+        elIntensity.value = String(Math.round(params.intensity * 100));
+        elOutIntensity.textContent = String(Math.round(params.intensity * 100));
+        elWind.value = String(Math.round(params.wind * 100));
+        elOutWind.textContent = String(Math.round(params.wind * 100));
+        elSplash.value = String(Math.round(params.splash * 100));
+        elOutSplash.textContent = String(Math.round(params.splash * 100));
+        chipLightning.setAttribute('aria-pressed', String(params.lightning));
+        buildNoise();
+        initNaive();
+        rafId = requestAnimationFrame(loop);
+
+        // 供调试 / 截图脚本使用
+        window.rainLab = {
+          params,
+          drops,
+          setNaive(v) {
+            params.naive = !!v;
+            chipNaive.setAttribute('aria-pressed', String(params.naive));
+          },
+          setQuality(v) {
+            quality = clamp(v, 0.3, 1);
+            syncCount();
+          },
+          setIntensity(v) {
+            params.intensity = clamp(v, 0.1, 1);
+            elIntensity.value = String(Math.round(params.intensity * 100));
+            elOutIntensity.textContent = elIntensity.value;
+            syncCount();
+          },
+          setSplash(v) {
+            params.splash = clamp(v, 0.2, 2);
+            elSplash.value = String(Math.round(params.splash * 100));
+            elOutSplash.textContent = elSplash.value;
+          },
+          reseed() {
+            sceneSeed = (Math.random() * 1e6) | 0;
+            buildWorld();
+            initMist();
+            initGlints();
+          },
+        };
+      })();
+    </script>
+  </body>
+</html>

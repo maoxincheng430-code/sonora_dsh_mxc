@@ -1,0 +1,139 @@
+/* 氛围背景系统样式（类名前缀 ambience-）
+ *
+ * 层级建议（给 Lead）：
+ * - 默认：.ambience 为 position:fixed + z-index:-1，位于 body 背景之上、所有内容之下，
+ *   只透出 #scene 径向渐变的透明边缘，适合轻氛围、不干扰粒子。
+ * - 若想让氛围层盖住 #scene 的 CSS 渐变、但仍位于粒子 canvas 之下：
+ *   createAmbience({ zIndex: 0 }) 即可 —— 模块默认把 el 前置插入 <body>（DOM 顺序早于
+ *   #scene），同层 z-index:0 时先插入者绘制在下，实现“渐变之上、canvas 之下”。
+ * - #app 是 z-index:1 的布局层且带 pointer-events，氛围层 fixed 在其下，互不影响。
+ */
+.ambience {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: transparent;
+  transition: background 1.6s ease, opacity 1.6s ease;
+}
+
+.ambience-scene-rain {
+  background: linear-gradient(180deg, rgba(24, 31, 56, 0.5) 0%, rgba(9, 12, 24, 0.82) 100%);
+}
+
+.ambience-scene-thunder {
+  background: linear-gradient(180deg, rgba(14, 16, 34, 0.78) 0%, rgba(5, 7, 16, 0.9) 100%);
+}
+
+.ambience-scene-library {
+  /* 图书馆：暖色纸感 + 桌灯下的暗角，配合纸笔声 */
+  background:
+    radial-gradient(ellipse 62% 50% at 50% 38%, rgba(96, 72, 46, 0.42), rgba(14, 11, 9, 0.86) 74%),
+    linear-gradient(180deg, #1c1611 0%, #0d0b09 100%);
+}
+
+.ambience-scene-beach {
+  /* 暮色海面：紫调夜空渐变到青绿海面，与 --accent/--mint 主题呼应 */
+  background: linear-gradient(
+    180deg,
+    #1c2440 0%,
+    #26335a 34%,
+    #2f5168 58%,
+    #3e7b81 82%,
+    #487e77 100%
+  );
+}
+
+.ambience-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 雷声闪光层：透明度由 JS 逐帧控制（与音频雷击同步） */
+.ambience-flash {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 68% 52% at 50% 26%,
+    rgba(232, 238, 255, 0.95) 0%,
+    rgba(168, 186, 255, 0.4) 38%,
+    transparent 74%
+  );
+}
+
+.ambience-image {
+  position: absolute;
+  inset: 0;
+}
+
+/* 自定义图片 / 视频背景上压一层极淡的暗色渐变：压住高亮的视频画面，
+   保证前景标题与歌词可读；容器 pointer-events 已关闭，不影响交互。 */
+.ambience-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(5, 8, 16, 0.4) 0%,
+    rgba(5, 8, 16, 0.14) 42%,
+    rgba(5, 8, 16, 0.5) 100%
+  );
+}
+
+.ambience-image img {
+  position: absolute;
+  inset: -4%;
+  width: 108%;
+  height: 108%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1.4s ease;
+}
+
+/* 用户视频背景：铺满视口，object-fit:cover 裁切多余画面；不加位移/缩放（会露出黑边） */
+.ambience-image video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: #000;
+  opacity: 0;
+  transition: opacity 1.4s ease;
+}
+
+.ambience-scene-image .ambience-image img,
+.ambience-scene-image .ambience-image video {
+  opacity: 0.85;
+}
+
+/* 轻微缓慢缩放漂移（Ken Burns） */
+.ambience-ken-burns {
+  animation: ambience-ken-burns 36s ease-in-out infinite alternate;
+}
+
+@keyframes ambience-ken-burns {
+  from {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.16) translate3d(-1.6%, 1.3%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambience-ken-burns {
+    animation: none;
+  }
+  .ambience {
+    transition: none;
+  }
+}

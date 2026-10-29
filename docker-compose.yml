@@ -1,0 +1,35 @@
+# 可选：用 Docker 起一个 MySQL 给 SONORA 曲库用。
+# 用法：
+#   docker compose up -d      # 启动（首次会拉镜像并自动建表）
+#   docker compose down       # 停止（数据保留在卷里）
+#   docker compose down -v    # 停止并清空数据
+#
+# 启动后运行 `npm run server`，API 默认就连 127.0.0.1:3307。
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: sonora-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: sonora
+      MYSQL_DATABASE: sonora
+      TZ: Asia/Shanghai
+    ports:
+      # 对外 3307，避免和本机已装的 MySQL(3306) 冲突
+      - "3307:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max-allowed-packet=128M
+    volumes:
+      - sonora-mysql-data:/var/lib/mysql
+      # 容器首次初始化时自动执行建表脚本
+      - ./server/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-psonora"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  sonora-mysql-data:

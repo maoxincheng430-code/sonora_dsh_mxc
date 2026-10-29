@@ -1,0 +1,1637 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>夕阳海滩 · BEACH LAB</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #1a1024;
+        font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+        color: #ffe9d6;
+      }
+      #stage {
+        position: fixed;
+        inset: 0;
+      }
+      #beach {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .hud {
+        position: fixed;
+        left: 20px;
+        bottom: 20px;
+        z-index: 5;
+        width: 250px;
+        padding: 14px 16px 12px;
+        border-radius: 16px;
+        background: linear-gradient(180deg, rgba(58, 30, 46, 0.62), rgba(28, 16, 28, 0.78));
+        border: 1px solid rgba(255, 186, 140, 0.2);
+        box-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 220, 190, 0.08);
+        backdrop-filter: blur(16px) saturate(1.15);
+        -webkit-backdrop-filter: blur(16px) saturate(1.15);
+        transition: opacity 0.35s ease, transform 0.35s ease;
+      }
+      .hud.hidden {
+        opacity: 0;
+        transform: translateY(14px) scale(0.98);
+        pointer-events: none;
+      }
+      .hud h1 {
+        margin: 0 0 3px;
+        font-size: 12.5px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        color: #fff1e2;
+      }
+      .hud .sub {
+        margin: 0 0 13px;
+        font-size: 10.5px;
+        letter-spacing: 0.04em;
+        color: rgba(255, 200, 165, 0.72);
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 9px 0;
+        font-size: 11.5px;
+        color: rgba(255, 226, 206, 0.86);
+      }
+      .row output {
+        min-width: 26px;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        color: #ffb98a;
+      }
+      input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 128px;
+        height: 3px;
+        border-radius: 3px;
+        background: linear-gradient(90deg, #ff9a63, rgba(255, 154, 99, 0.2));
+        outline: none;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 11px;
+        height: 11px;
+        border: 0;
+        border-radius: 50%;
+        background: #ffe6cf;
+        box-shadow: 0 0 0 3px rgba(255, 154, 99, 0.25), 0 2px 8px rgba(0, 0, 0, 0.55);
+        cursor: pointer;
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 11px;
+        height: 11px;
+        border: 0;
+        border-radius: 50%;
+        background: #ffe6cf;
+        cursor: pointer;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 11px;
+      }
+      .chip {
+        padding: 5px 10px;
+        font: inherit;
+        font-size: 11px;
+        color: rgba(255, 226, 206, 0.85);
+        background: rgba(255, 154, 99, 0.12);
+        border: 1px solid rgba(255, 186, 140, 0.22);
+        border-radius: 999px;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .chip:hover {
+        border-color: rgba(255, 200, 160, 0.55);
+      }
+      .chip[aria-pressed="true"] {
+        color: #2a1408;
+        background: #ffd7b4;
+        border-color: #ffe8d4;
+      }
+      .hint {
+        margin: 11px 0 0;
+        font-size: 10px;
+        line-height: 1.75;
+        color: rgba(255, 198, 165, 0.55);
+      }
+      kbd {
+        padding: 0 4px;
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 9.5px;
+        border-radius: 4px;
+        background: rgba(255, 190, 150, 0.16);
+      }
+      @media (max-width: 640px) {
+        .hud {
+          left: 12px;
+          right: 12px;
+          bottom: 12px;
+          width: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage"><canvas id="beach"></canvas></div>
+
+    <div class="hud" id="hud">
+      <h1>海滩 · BEACH LAB</h1>
+      <p class="sub">夕阳 · 微风 · 分层浪 · 湿沙 · 礁石 · 螃蟹小鱼</p>
+
+      <label class="row">
+        风
+        <input id="wind" type="range" min="0" max="100" step="1" value="42" />
+        <output id="outWind">42</output>
+      </label>
+      <label class="row">
+        浪
+        <input id="wave" type="range" min="40" max="170" step="1" value="100" />
+        <output id="outWave">100</output>
+      </label>
+
+      <div class="chips">
+        <button class="chip" id="chipAnimals" aria-pressed="true">生物</button>
+        <button class="chip" id="chipHide">隐藏面板</button>
+      </div>
+
+      <p class="hint">
+        左：海与分层涌浪 · 右：被浪反复打湿的沙滩<br />
+        <kbd>空格</kbd> 暂停 · 点沙滩上的螃蟹 / 水里的小鱼看看
+      </p>
+    </div>
+
+    <script>
+      (() => {
+        'use strict';
+
+        const cvs = document.getElementById('beach');
+        const ctx = cvs.getContext('2d', { alpha: false });
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        const R = { W: 0, H: 0, dpr: 1, horizon: 0 };
+        const params = { wind: 0.42, wave: 1, animals: true, paused: false };
+        let time = 0;
+        let sceneSeed = 20260101;
+
+        const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+        const lerp = (a, b, t) => a + (b - a) * t;
+        const smooth = (t) => t * t * (3 - 2 * t);
+
+        function mulberry32(seed) {
+          let a = seed >>> 0;
+          return function next() {
+            a = (a + 0x6d2b79f5) | 0;
+            let t = Math.imul(a ^ (a >>> 15), 1 | a);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          };
+        }
+
+        /* ============================================================
+         * 1. 几何：岸线（左边海，右边沙，斜向远收）
+         * ============================================================ */
+        const SEG = 64;
+        const segs = []; // { y, t, sx, wet, reach }
+
+        // 岸线：t=0 在远处（地平线），t=1 在画面底部
+        // 消失点在右上（0.70W），近处在左下 → 海占左上，沙占右下
+        function shoreXAt(y) {
+          const t = clamp((y - R.horizon) / (R.H - R.horizon), 0, 1);
+          const k = Math.pow(t, 1.38);
+          const base = lerp(R.W * 0.7, R.W * 0.2, k);
+          const bend =
+            Math.sin(t * 4.6 + 0.7) * R.W * 0.015 * Math.pow(t, 1.5) +
+            Math.sin(t * 12.1 + 1.9) * R.W * 0.004;
+          return base + bend;
+        }
+        function maxReachAt(t) {
+          // 湿沙带宽度：越近越宽（透视）
+          return R.W * (0.01 + 0.13 * Math.pow(t, 1.55));
+        }
+
+        function buildSegments() {
+          segs.length = 0;
+          for (let i = 0; i <= SEG; i++) {
+            const t = i / SEG;
+            const y = R.horizon + (R.H - R.horizon) * Math.pow(t, 1.0);
+            segs.push({
+              y,
+              t,
+              sx: shoreXAt(y),
+              wet: 0.18 + Math.random() * 0.4,
+              reach: 0,
+              off: (Math.sin(i * 0.9) * 0.5 + Math.sin(i * 2.3) * 0.5) * 0.03,
+            });
+          }
+        }
+
+        /* ============================================================
+         * 2. 静态场景烘焙：夕阳天空 / 海面 / 沙滩 / 礁石
+         * ============================================================ */
+        const base = document.createElement('canvas');
+        const rocks = [];
+
+        function buildBase() {
+          const { W, H, dpr } = R;
+          const hz = R.horizon;
+          base.width = Math.round(W * dpr);
+          base.height = Math.round(H * dpr);
+          const g = base.getContext('2d');
+          g.setTransform(dpr, 0, 0, dpr, 0, 0);
+          g.clearRect(0, 0, W, H);
+          const rand = mulberry32(sceneSeed);
+
+          drawSunsetSky(g, rand);
+          drawSeaBase(g, rand);
+          drawSandBase(g, rand);
+          buildRocks(g, rand);
+        }
+
+        function drawSunsetSky(g, rand) {
+          const { W, H } = R;
+          const hz = R.horizon;
+          const sky = g.createLinearGradient(0, 0, 0, hz);
+          sky.addColorStop(0, '#2a1a3e');
+          sky.addColorStop(0.3, '#5a2b4e');
+          sky.addColorStop(0.6, '#a8455c');
+          sky.addColorStop(0.82, '#e5785a');
+          sky.addColorStop(1, '#ffb87a');
+          g.fillStyle = sky;
+          g.fillRect(0, 0, W, hz + 1);
+
+          // 太阳与光晕
+          const sx = W * 0.19;
+          const sy = hz - H * 0.055;
+          const sr = Math.min(W, H) * 0.05;
+          const halo = g.createRadialGradient(sx, sy, sr * 0.5, sx, sy, sr * 9);
+          halo.addColorStop(0, 'rgba(255,214,150,0.55)');
+          halo.addColorStop(0.15, 'rgba(255,180,110,0.28)');
+          halo.addColorStop(0.42, 'rgba(255,140,90,0.12)');
+          halo.addColorStop(1, 'rgba(255,110,80,0)');
+          g.fillStyle = halo;
+          g.fillRect(sx - sr * 9, sy - sr * 9, sr * 18, sr * 18);
+
+          const disc = g.createRadialGradient(sx, sy - sr * 0.2, sr * 0.1, sx, sy, sr);
+          disc.addColorStop(0, '#fff6d8');
+          disc.addColorStop(0.45, '#ffdca8');
+          disc.addColorStop(0.85, 'rgba(255,176,110,0.9)');
+          disc.addColorStop(1, 'rgba(255,150,90,0)');
+          g.fillStyle = disc;
+          g.beginPath();
+          g.arc(sx, sy, sr, 0, Math.PI * 2);
+          g.fill();
+
+          // 云：横向拉长的暖色云带
+          for (let i = 0; i < 16; i++) {
+            const cy = hz * (0.14 + rand() * 0.8);
+            const cx = rand() * W;
+            const cw = (70 + rand() * 260) * (0.5 + W / 1800);
+            const chh = cw * (0.045 + rand() * 0.05);
+            const a = 0.1 + rand() * 0.2;
+            g.save();
+            g.translate(cx, cy);
+            g.scale(1, chh / cw);
+            const cg = g.createRadialGradient(0, 0, 0, 0, 0, cw);
+            cg.addColorStop(0, `rgba(255,186,140,${a})`);
+            cg.addColorStop(0.45, `rgba(226,130,120,${a * 0.55})`);
+            cg.addColorStop(1, 'rgba(120,60,90,0)');
+            g.fillStyle = cg;
+            g.beginPath();
+            g.arc(0, 0, cw, 0, Math.PI * 2);
+            g.fill();
+            g.restore();
+          }
+
+          // 远处的两只海鸟
+          g.strokeStyle = 'rgba(60,30,40,0.55)';
+          g.lineWidth = 1.4;
+          g.lineCap = 'round';
+          const birds = [
+            [0.63, 0.42, 9],
+            [0.7, 0.36, 7],
+            [0.58, 0.5, 6],
+          ];
+          for (const [bx, by, bs] of birds) {
+            const x = bx * W;
+            const y = by * hz;
+            g.beginPath();
+            g.moveTo(x - bs, y);
+            g.quadraticCurveTo(x - bs * 0.4, y - bs * 0.55, x, y);
+            g.quadraticCurveTo(x + bs * 0.4, y - bs * 0.55, x + bs, y);
+            g.stroke();
+          }
+        }
+
+        function drawSeaBase(g, rand) {
+          const { W, H } = R;
+          const hz = R.horizon;
+
+          // 海面底色：远处深、近岸浅（左深右浅）
+          const sea = g.createLinearGradient(0, hz, 0, H);
+          sea.addColorStop(0, '#2b4a63');
+          sea.addColorStop(0.35, '#2a6570');
+          sea.addColorStop(0.7, '#2d7d7c');
+          sea.addColorStop(1, '#3f9187');
+          g.fillStyle = sea;
+          g.fillRect(0, hz, W, H - hz);
+
+          // 海天线暖光
+          const glow = g.createLinearGradient(0, hz - 3, 0, hz + H * 0.08);
+          glow.addColorStop(0, 'rgba(255,196,140,0.55)');
+          glow.addColorStop(0.35, 'rgba(255,160,120,0.16)');
+          glow.addColorStop(1, 'rgba(255,140,110,0)');
+          g.fillStyle = glow;
+          g.fillRect(0, hz - 3, W, H * 0.1);
+
+          // 太阳在水面的暖色倒影带（远处最亮）
+          const sx = W * 0.19;
+          const refl = g.createLinearGradient(sx - W * 0.12, 0, sx + W * 0.12, 0);
+          refl.addColorStop(0, 'rgba(255,180,120,0)');
+          refl.addColorStop(0.5, 'rgba(255,196,140,0.22)');
+          refl.addColorStop(1, 'rgba(255,180,120,0)');
+          g.fillStyle = refl;
+          g.fillRect(sx - W * 0.12, hz, W * 0.24, H * 0.35);
+
+          // 远处海面的细碎亮线（风纹）
+          g.strokeStyle = 'rgba(210,240,235,0.10)';
+          g.lineWidth = 1;
+          for (let i = 0; i < 60; i++) {
+            const y = hz + Math.pow(rand(), 1.7) * (H - hz) * 0.5;
+            const x = rand() * W * 0.6;
+            const len = 6 + rand() * 26;
+            g.beginPath();
+            g.moveTo(x, y);
+            g.lineTo(x + len, y + 1);
+            g.stroke();
+          }
+        }
+
+        function drawSandBase(g, rand) {
+          const { W, H } = R;
+          const hz = R.horizon;
+
+          // 沙滩多边形：岸线右侧
+          g.beginPath();
+          g.moveTo(segs[0].sx, hz);
+          for (let i = 1; i <= SEG; i++) g.lineTo(segs[i].sx, segs[i].y);
+          g.lineTo(W, H);
+          g.lineTo(W, hz);
+          g.closePath();
+
+          const sand = g.createLinearGradient(W * 0.55, hz, W * 0.95, H);
+          sand.addColorStop(0, '#e3bf8e');
+          sand.addColorStop(0.35, '#eacb9c');
+          sand.addColorStop(0.75, '#dcb283');
+          sand.addColorStop(1, '#c99a6d');
+          g.fillStyle = sand;
+          g.fill();
+
+          g.save();
+          g.clip();
+
+          // 沙粒噪点
+          for (let i = 0; i < 5200; i++) {
+            const x = W * 0.4 + rand() * W * 0.6;
+            const y = hz + rand() * (H - hz);
+            const r = rand();
+            g.fillStyle =
+              r < 0.5
+                ? `rgba(255,240,214,${0.05 + rand() * 0.16})`
+                : `rgba(150,104,66,${0.04 + rand() * 0.14})`;
+            const s = 0.7 + rand() * 1.5;
+            g.fillRect(x, y, s, s);
+          }
+
+          // 风成沙脊：沿沙滩方向的浅色长弧线
+          for (let i = 0; i < 26; i++) {
+            const t = 0.06 + rand() * 0.94;
+            const y = hz + (H - hz) * t;
+            const sx = shoreXAt(y) + 12 + rand() * W * 0.05;
+            const len = (60 + rand() * 240) * (0.4 + t);
+            g.strokeStyle = `rgba(255,232,196,${0.05 + rand() * 0.08})`;
+            g.lineWidth = 1 + rand() * 1.6;
+            g.beginPath();
+            g.moveTo(sx, y);
+            g.quadraticCurveTo(sx + len * 0.5, y - 2 - rand() * 5, sx + len, y + rand() * 4);
+            g.stroke();
+          }
+
+          // 贝壳与碎石
+          for (let i = 0; i < 16; i++) {
+            const t = 0.15 + rand() * 0.8;
+            const y = hz + (H - hz) * t;
+            const sx = shoreXAt(y) + maxReachAt(t) + 40 + rand() * Math.max(20, W - shoreXAt(y) - 90);
+            const s2 = (2 + rand() * 4) * (0.5 + t);
+            g.save();
+            g.translate(sx, y);
+            g.rotate(rand() * 6.28);
+            g.fillStyle = 'rgba(255,240,220,0.9)';
+            g.beginPath();
+            g.ellipse(0, 0, s2, s2 * 0.72, 0, 0, Math.PI * 2);
+            g.fill();
+            g.strokeStyle = 'rgba(196,152,110,0.55)';
+            g.lineWidth = 0.7;
+            for (let k = -1; k <= 1; k++) {
+              g.beginPath();
+              g.moveTo(0, k * s2 * 0.34);
+              g.lineTo(s2 * 0.82, k * s2 * 0.34);
+              g.stroke();
+            }
+            g.restore();
+          }
+
+          // 靠近海的一侧，沙面更暖（被夕阳照亮）
+          const warm = g.createLinearGradient(W * 0.5, 0, W, 0);
+          warm.addColorStop(0, 'rgba(255,190,120,0.16)');
+          warm.addColorStop(0.5, 'rgba(255,170,110,0.05)');
+          warm.addColorStop(1, 'rgba(255,150,100,0)');
+          g.fillStyle = warm;
+          g.fillRect(W * 0.4, hz, W * 0.6, H - hz);
+
+          g.restore();
+
+          // 岸线：干沙与海的交界（湿沙会在每帧叠加）
+          g.strokeStyle = 'rgba(120,84,54,0.55)';
+          g.lineWidth = 1.5;
+          g.beginPath();
+          g.moveTo(segs[0].sx, hz);
+          for (let i = 1; i <= SEG; i++) g.lineTo(segs[i].sx, segs[i].y);
+          g.stroke();
+        }
+
+        function buildRocks(g, rand) {
+          rocks.length = 0;
+          const defs = [
+            { t: 0.44, side: 'water', s: 0.8 },
+            { t: 0.63, side: 'water', s: 1.2 },
+            { t: 0.76, side: 'water', s: 0.7 },
+            { t: 0.9, side: 'sand', s: 1.0 },
+          ];
+          for (const def of defs) {
+            const y = R.horizon + (R.H - R.horizon) * def.t;
+            const sx = shoreXAt(y);
+            const scale = (0.5 + def.t) * def.s * Math.min(R.W, R.H) * 0.045;
+            const x = def.side === 'water' ? sx - scale * 1.1 : sx + scale * 1.3;
+            rocks.push({ x, y, scale, side: def.side, splash: 0 });
+            drawRock(g, x, y, scale, def.side, rand);
+          }
+        }
+
+        function drawRock(g, x, y, s, side, rand) {
+          const pts = 9;
+          const shape = [];
+          for (let i = 0; i < pts; i++) {
+            const a = (i / pts) * Math.PI * 2;
+            const rr = s * (0.72 + rand() * 0.5);
+            shape.push([Math.cos(a) * rr * 1.35, Math.sin(a) * rr * 0.8]);
+          }
+
+          // 阴影
+          g.fillStyle = side === 'sand' ? 'rgba(120,80,50,0.22)' : 'rgba(12,40,46,0.35)';
+          g.beginPath();
+          g.ellipse(x + s * 0.25, y + s * 0.55, s * 1.5, s * 0.5, 0, 0, Math.PI * 2);
+          g.fill();
+
+          // 石体
+          g.beginPath();
+          g.moveTo(x + shape[0][0], y + shape[0][1]);
+          for (let i = 1; i <= pts; i++) {
+            const p = shape[i % pts];
+            const q = shape[(i - 1) % pts];
+            g.quadraticCurveTo(x + q[0], y + q[1], x + (p[0] + q[0]) / 2, y + (p[1] + q[1]) / 2);
+          }
+          g.closePath();
+          const rg = g.createLinearGradient(x - s, y - s, x + s, y + s);
+          rg.addColorStop(0, '#5b4a58');
+          rg.addColorStop(0.45, '#3d3342');
+          rg.addColorStop(1, '#241e2b');
+          g.fillStyle = rg;
+          g.fill();
+
+          // 夕阳勾边（左上）
+          g.strokeStyle = 'rgba(255,186,130,0.5)';
+          g.lineWidth = Math.max(1, s * 0.06);
+          g.beginPath();
+          g.moveTo(x - s * 0.9, y - s * 0.2);
+          g.quadraticCurveTo(x - s * 0.3, y - s * 0.9, x + s * 0.5, y - s * 0.55);
+          g.stroke();
+
+          // 顶部湿亮
+          g.fillStyle = 'rgba(255,220,180,0.12)';
+          g.beginPath();
+          g.ellipse(x - s * 0.1, y - s * 0.42, s * 0.6, s * 0.18, -0.2, 0, Math.PI * 2);
+          g.fill();
+        }
+
+        /* ============================================================
+         * 3. 分层涌浪 + 浪花
+         * ============================================================ */
+        const waves = [];
+        function initWaves() {
+          waves.length = 0;
+          const rand = mulberry32(sceneSeed + 11);
+          for (let i = 0; i < 8; i++) {
+            waves.push({
+              p: (i + rand() * 0.6) / 8,
+              speed: 0.055 + rand() * 0.03,
+              off: rand() * 6.28,
+              amp: 0.6 + rand() * 0.9,
+              thick: 0.55 + rand() * 0.9,
+              jit: (rand() - 0.5) * 0.07,
+            });
+          }
+        }
+
+        function swashPhaseShift(i) {
+          return Math.sin(i * 1.7) * 0.02 + Math.sin(i * 0.53) * 0.012;
+        }
+
+        function drawWaves(dt) {
+          const { W, H } = R;
+          const waveK = params.wave;
+
+          // 只在海面里画
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(-20, R.horizon);
+          for (let i = 0; i <= SEG; i++) ctx.lineTo(segs[i].sx, segs[i].y);
+          ctx.lineTo(-20, H + 20);
+          ctx.closePath();
+          ctx.clip();
+
+          for (const w of waves) {
+            w.p += dt * w.speed * (0.6 + waveK * 0.45);
+            if (w.p >= 1) w.p -= 1;
+            const p = w.p;
+
+            // 浪线由远及近推进：越近越大、越白
+            const depth = Math.pow(p, 1.5);
+            const yBase =
+              R.horizon + (H - R.horizon) * (0.015 + depth * 0.99 + (w.jit || 0) * depth);
+            const amp = (1.1 + 18 * p) * w.amp * 0.55;
+            const thick = (7 + 46 * p) * w.thick * 0.5;
+            const foam = clamp((p - 0.35) / 0.65, 0, 1);
+            const vis = clamp(p / 0.12, 0, 1) * clamp((1 - p) / 0.1, 0, 1);
+
+            const topPts = [];
+            const botPts = [];
+            for (let x = -24; x <= W + 24; x += 14) {
+              const wob =
+                Math.sin(x * 0.0055 + w.off + time * 0.55) * amp +
+                Math.sin(x * 0.013 - time * 0.9 + w.off) * amp * 0.35;
+              // 稍微顺着岸线的方向斜一点，避免一排排水平横条
+              const slant = (x - W * 0.5) * 0.26 * (H / W);
+              topPts.push([x, yBase + wob + slant]);
+              botPts.push([x, yBase + wob + thick + slant]);
+            }
+
+            // 浪身外面先罩一层柔光，让浪有厚度
+            ctx.beginPath();
+            ctx.moveTo(topPts[0][0], topPts[0][1]);
+            for (let i = 1; i < topPts.length; i++) ctx.lineTo(topPts[i][0], topPts[i][1]);
+            ctx.strokeStyle = `rgba(206,238,236,${(0.05 + foam * 0.08).toFixed(3)})`;
+            ctx.lineWidth = thick * 2.8;
+            ctx.stroke();
+
+            // 浪身
+            ctx.beginPath();
+            ctx.moveTo(topPts[0][0], topPts[0][1]);
+            for (let i = 1; i < topPts.length; i++) ctx.lineTo(topPts[i][0], topPts[i][1]);
+            for (let i = botPts.length - 1; i >= 0; i--) ctx.lineTo(botPts[i][0], botPts[i][1]);
+            ctx.closePath();
+            const bandA = (0.12 + foam * 0.32) * clamp(1 - p * 0.18, 0.45, 1) * vis;
+            ctx.fillStyle = `rgba(${lerp(118, 246, foam)}, ${lerp(198, 250, foam)}, ${lerp(
+              206,
+              246,
+              foam
+            )}, ${bandA.toFixed(3)})`;
+            ctx.fill();
+
+            // 浪脊亮线
+            ctx.beginPath();
+            ctx.moveTo(topPts[0][0], topPts[0][1]);
+            for (let i = 1; i < topPts.length; i++) ctx.lineTo(topPts[i][0], topPts[i][1]);
+            ctx.strokeStyle = `rgba(255,250,242,${((0.24 + foam * 0.5) * vis).toFixed(3)})`;
+            ctx.lineWidth = 1.4 + foam * 3.2;
+            ctx.stroke();
+
+            // 浪后暗部，给浪一点体积
+            ctx.beginPath();
+            ctx.moveTo(botPts[0][0], botPts[0][1]);
+            for (let i = 1; i < botPts.length; i++) ctx.lineTo(botPts[i][0], botPts[i][1]);
+            ctx.strokeStyle = `rgba(12,56,64,${(0.14 + foam * 0.1).toFixed(3)})`;
+            ctx.lineWidth = 4 + foam * 7;
+            ctx.stroke();
+
+            // 近岸：浪尖翻出的白沫
+            if (p > 0.4) {
+              ctx.fillStyle = `rgba(255,252,246,${((0.18 + foam * 0.55) * vis).toFixed(3)})`;
+              for (let i = 0; i < topPts.length; i += 1) {
+                if (Math.random() < 0.25) continue;
+                const pt = topPts[i];
+                const rr = (1.5 + Math.random() * 7) * (0.3 + p);
+                ctx.beginPath();
+                ctx.ellipse(
+                  pt[0] + (Math.random() - 0.5) * 10,
+                  pt[1] + Math.sin(i + time * 2) * 3 + (Math.random() - 0.5) * 5,
+                  rr * 1.8,
+                  rr * 0.6,
+                  Math.random() * 0.4,
+                  0,
+                  Math.PI * 2
+                );
+                ctx.fill();
+              }
+            }
+          }
+          ctx.restore();
+
+          // 贴岸白浪带：一直存在的“白水”（遇到礁石断开）
+          ctx.beginPath();
+          let pen = false;
+          for (let i = 0; i <= SEG; i++) {
+            const sg = segs[i];
+            const off = (2 + sg.t * 7) * (0.6 + params.wave * 0.5);
+            const x = sg.sx - off + Math.sin(i * 0.7 + time * 1.4) * (1 + sg.t * 3);
+            let blocked = false;
+            for (const r of rocks) {
+              if (r.side === 'water' && Math.abs(r.y - sg.y) < r.scale * 1.05) blocked = true;
+            }
+            if (blocked) {
+              pen = false;
+              continue;
+            }
+            if (!pen) {
+              ctx.moveTo(x, sg.y);
+              pen = true;
+            } else {
+              ctx.lineTo(x, sg.y);
+            }
+          }
+          ctx.strokeStyle = 'rgba(255,252,246,0.26)';
+          ctx.lineWidth = 14;
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(255,252,248,0.8)';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
+        /* ============================================================
+         * 4. 退潮 / 涨潮：湿沙 + 水膜 + 泡沫残痕
+         * ============================================================ */
+        const marks = [];
+        let swashClock = 0;
+        const swashPeriod = 7.0;
+
+        function swashReach(p) {
+          // 0.0-0.40 静水；0.40-0.58 上冲；0.58-0.90 回退；之后归零
+          if (p < 0.4) return 0;
+          if (p < 0.58) return smooth((p - 0.4) / 0.18);
+          if (p < 0.9) return 1 - smooth((p - 0.58) / 0.32);
+          return 0;
+        }
+
+        let lastMaster = 0;
+        function updateSwash(dt) {
+          swashClock += dt;
+          const period = swashPeriod / (0.7 + params.wave * 0.45);
+          const master = (swashClock / period) % 1;
+
+          for (let i = 0; i < segs.length; i++) {
+            const s = segs[i];
+            const reachP = swashReach((master + s.off + swashPhaseShift(i) + 1) % 1);
+            // 浪越大，冲上沙滩越远
+            const reach = reachP * (0.75 + params.wave * 0.45);
+            s.reach = reach;
+            s.wet = Math.max(s.wet, reach);
+          }
+
+          // 每次浪冲到最高点时记一条潮痕
+          if (lastMaster < 0.55 && master >= 0.55) {
+            marks.push({ age: 0, reach: segs.map((sg) => sg.reach) });
+            if (marks.length > 3) marks.shift();
+          }
+          lastMaster = master;
+
+          for (let i = marks.length - 1; i >= 0; i--) {
+            marks[i].age += dt;
+            if (marks[i].age > 12) marks.splice(i, 1);
+          }
+        }
+
+        function drawWetSand(dt) {
+          const { W } = R;
+          // 湿沙随时间慢慢变干
+          const dry = Math.exp(-dt * 0.14);
+          for (const sg of segs) sg.wet *= dry;
+
+          // 湿沙宽度：紧贴水线的那一条永远是湿的，冲上来的浪再把它推宽
+          const wetW = (sg) =>
+            maxReachAt(sg.t) * (0.3 + 0.62 * sg.wet + 0.05 * Math.sin(time * 0.9 + sg.t * 8));
+
+          // 外层：半湿（颜色变深、饱和度上来）
+          ctx.beginPath();
+          ctx.moveTo(segs[0].sx, segs[0].y);
+          for (let i = 1; i <= SEG; i++) ctx.lineTo(segs[i].sx + wetW(segs[i]), segs[i].y);
+          for (let i = SEG; i >= 0; i--) ctx.lineTo(segs[i].sx, segs[i].y);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(116,76,44,0.6)';
+          ctx.fill();
+
+          // 内层：深湿沙
+          ctx.beginPath();
+          ctx.moveTo(segs[0].sx, segs[0].y);
+          for (let i = 1; i <= SEG; i++) ctx.lineTo(segs[i].sx + wetW(segs[i]) * 0.6, segs[i].y);
+          for (let i = SEG; i >= 0; i--) ctx.lineTo(segs[i].sx, segs[i].y);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(56,34,18,0.64)';
+          ctx.fill();
+
+          // 湿/干沙分界：湿沙边缘更深，像水刚退下去的那条线
+          ctx.beginPath();
+          for (let i = 0; i <= SEG; i++) {
+            const sg = segs[i];
+            const x = sg.sx + wetW(sg);
+            if (i === 0) ctx.moveTo(x, sg.y);
+            else ctx.lineTo(x, sg.y);
+          }
+          ctx.strokeStyle = 'rgba(92,58,32,0.55)';
+          ctx.lineWidth = 1.8;
+          ctx.stroke();
+
+          // 湿沙上的天空反光（偏冷，和暖色沙子形成对比）
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(segs[0].sx, segs[0].y);
+          for (let i = 1; i <= SEG; i++) ctx.lineTo(segs[i].sx + wetW(segs[i]) * 0.55, segs[i].y);
+          for (let i = SEG; i >= 0; i--) ctx.lineTo(segs[i].sx, segs[i].y);
+          ctx.closePath();
+          ctx.clip();
+          const skyRefl = ctx.createLinearGradient(W * 0.45, R.horizon, W * 0.8, R.H);
+          skyRefl.addColorStop(0, 'rgba(150,196,220,0.16)');
+          skyRefl.addColorStop(0.5, 'rgba(120,168,200,0.08)');
+          skyRefl.addColorStop(1, 'rgba(100,150,190,0.02)');
+          ctx.fillStyle = skyRefl;
+          ctx.fillRect(0, 0, W, R.H);
+          ctx.restore();
+
+          // 湿沙上的夕阳反光（水面一样的“镜面感”）
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(segs[0].sx, segs[0].y);
+          for (let i = 1; i <= SEG; i++) ctx.lineTo(segs[i].sx + wetW(segs[i]) * 0.95, segs[i].y);
+          for (let i = SEG; i >= 0; i--) ctx.lineTo(segs[i].sx, segs[i].y);
+          ctx.closePath();
+          ctx.clip();
+          const shine = ctx.createLinearGradient(W * 0.4, R.horizon, W * 0.9, R.H);
+          const pulse = 0.5 + 0.5 * Math.sin(time * 1.2);
+          shine.addColorStop(0, `rgba(255,214,166,${(0.2 + pulse * 0.14).toFixed(3)})`);
+          shine.addColorStop(0.45, `rgba(255,192,142,${(0.1 + pulse * 0.06).toFixed(3)})`);
+          shine.addColorStop(1, 'rgba(255,232,204,0.02)');
+          ctx.fillStyle = shine;
+          ctx.fillRect(0, 0, W, R.H);
+          ctx.restore();
+
+          // 潮痕：每次浪退回去在沙上留下的细白线
+          for (const m of marks) {
+            const a = clamp(1 - m.age / 10, 0, 1) * 0.32;
+            if (a <= 0.01) continue;
+            ctx.beginPath();
+            for (let i = 0; i <= SEG; i++) {
+              const sg = segs[i];
+              const x = sg.sx + m.reach[i] * maxReachAt(sg.t) * 0.92;
+              if (i === 0) ctx.moveTo(x, sg.y);
+              else ctx.lineTo(x, sg.y);
+            }
+            ctx.strokeStyle = `rgba(255,246,232,${a.toFixed(3)})`;
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+          }
+
+          // 当前上冲的水膜 + 泡沫
+          drawSwashSheet();
+        }
+
+        function drawSwashSheet() {
+          const { W } = R;
+          let any = false;
+          for (const sg of segs) if (sg.reach > 0.01) any = true;
+          if (!any) return;
+
+          // 水膜：薄薄一层反光的海水铺在沙上
+          ctx.beginPath();
+          ctx.moveTo(segs[0].sx, segs[0].y);
+          for (let i = 1; i <= SEG; i++) {
+            const sg = segs[i];
+            ctx.lineTo(sg.sx + sg.reach * maxReachAt(sg.t), sg.y);
+          }
+          for (let i = SEG; i >= 0; i--) ctx.lineTo(segs[i].sx, segs[i].y);
+          ctx.closePath();
+          const film = ctx.createLinearGradient(0, R.horizon, W * 0.6, R.H);
+          film.addColorStop(0, 'rgba(168,214,216,0.5)');
+          film.addColorStop(0.5, 'rgba(188,226,224,0.34)');
+          film.addColorStop(1, 'rgba(210,234,228,0.16)');
+          ctx.fillStyle = film;
+          ctx.fill();
+
+          // 前缘泡沫：柔光 + 亮线（浪舌尖）
+          const edgeX = (i) => segs[i].sx + segs[i].reach * maxReachAt(segs[i].t);
+          ctx.beginPath();
+          for (let i = 0; i <= SEG; i++) {
+            if (i === 0) ctx.moveTo(edgeX(i), segs[i].y);
+            else ctx.lineTo(edgeX(i), segs[i].y);
+          }
+          ctx.strokeStyle = 'rgba(255,252,248,0.34)';
+          ctx.lineWidth = 13;
+          ctx.lineCap = 'round';
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(255,253,250,0.92)';
+          ctx.lineWidth = 3.6;
+          ctx.stroke();
+
+          // 泡沫团：前缘 + 水膜里的气泡
+          for (let i = 1; i < SEG; i += 2) {
+            const sg = segs[i];
+            if (sg.reach < 0.06) continue;
+            const rw = sg.reach * maxReachAt(sg.t);
+            const rr = (2 + Math.sin(i * 1.7 + time * 2.4) * 1.6) * (0.45 + sg.t * 1.3);
+            ctx.fillStyle = `rgba(255,252,246,${(0.34 + 0.22 * Math.sin(i * 2.1 + time * 3)).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.ellipse(sg.sx + rw - rr * 0.6, sg.y + 1, rr * 1.5, rr * 0.7, 0, 0, Math.PI * 2);
+            ctx.fill();
+            if (i % 4 === 0) {
+              ctx.beginPath();
+              ctx.ellipse(sg.sx + rw * 0.55, sg.y + 2, rr * 0.7, rr * 0.34, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
+
+        /* ============================================================
+         * 5. 水面碎光 + 岸边泡沫拉丝
+         * ============================================================ */
+        const glitters = [];
+        function initGlitter() {
+          glitters.length = 0;
+          const rand = mulberry32(sceneSeed + 5);
+          for (let i = 0; i < 150; i++) {
+            glitters.push({
+              x: rand() * R.W * 0.66,
+              y: R.horizon + Math.pow(rand(), 1.25) * (R.H - R.horizon),
+              len: 3 + rand() * 16,
+              ph: rand() * 6.28,
+              sp: 0.9 + rand() * 2.6,
+              w: 0.8 + rand() * 1.2,
+            });
+          }
+        }
+
+        function drawGlitter() {
+          const { W } = R;
+          const sx = W * 0.19;
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+
+          // 夕阳在水面拉出的一条暖色反光带
+          const sunPath = ctx.createRadialGradient(sx, R.horizon, 0, sx, R.horizon, W * 0.26);
+          sunPath.addColorStop(0, 'rgba(255,200,138,0.32)');
+          sunPath.addColorStop(0.3, 'rgba(255,174,112,0.14)');
+          sunPath.addColorStop(1, 'rgba(255,150,90,0)');
+          ctx.fillStyle = sunPath;
+          ctx.fillRect(0, R.horizon, W * 0.5, R.H - R.horizon);
+
+          for (const g of glitters) {
+            const shore = shoreXAt(g.y);
+            if (g.x > shore - 6) continue;
+            const lum = 0.5 + 0.5 * Math.sin(time * g.sp + g.ph);
+            const nearSun = Math.max(0, 1 - Math.abs(g.x - sx) / (W * 0.22));
+            const depth = clamp((g.y - R.horizon) / (R.H - R.horizon), 0, 1);
+            const a = (0.08 + lum * 0.26) * (0.35 + nearSun * 1.4) * (0.4 + depth * 0.6);
+            if (a < 0.02) continue;
+            ctx.fillStyle = `rgba(255,${210},${160},${a.toFixed(3)})`;
+            ctx.fillRect(g.x + Math.sin(time * 1.3 + g.ph) * 3, g.y, g.len, g.w);
+          }
+          ctx.restore();
+        }
+
+        /* ============================================================
+         * 6. 礁石浪花
+         * ============================================================ */
+        const particles = [];
+
+        function spawnSpray(x, y, n, spread, power) {
+          for (let i = 0; i < n; i++) {
+            const a = -Math.PI * 0.5 + (Math.random() - 0.5) * spread;
+            const sp = power * (0.4 + Math.random() * 0.8);
+            particles.push({
+              x,
+              y,
+              vx: Math.cos(a) * sp,
+              vy: Math.sin(a) * sp,
+              life: 0,
+              ttl: 0.4 + Math.random() * 0.6,
+              size: 1 + Math.random() * 2.4,
+              kind: 'spray',
+            });
+          }
+          if (particles.length > 420) particles.splice(0, particles.length - 420);
+        }
+
+        function updateRocks(dt) {
+          for (const r of rocks) {
+            if (r.side !== 'water') continue;
+            r.splash -= dt;
+            if (r.splash <= 0) {
+              // 浪打礁石
+              const nearShore = r.x + r.scale;
+              const foam = clamp(1 - Math.abs(nearShore - shoreXAt(r.y)) / (R.W * 0.12), 0, 1);
+              spawnSpray(r.x, r.y - r.scale * 0.4, 3 + Math.floor(foam * 8), 1.6, (50 + foam * 160) * params.wave);
+              r.splash = 0.7 + Math.random() * 1.6;
+            }
+          }
+        }
+
+        function drawRocksFoam() {
+          for (const r of rocks) {
+            // 石根处的白沫
+            const a = 0.35 + 0.25 * Math.sin(time * 1.7 + r.x);
+            ctx.fillStyle = `rgba(255,250,244,${a.toFixed(3)})`;
+            ctx.beginPath();
+            ctx.ellipse(r.x, r.y + r.scale * 0.4, r.scale * 0.95, r.scale * 0.28, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,252,248,0.22)';
+            ctx.beginPath();
+            ctx.ellipse(r.x + Math.sin(time * 2 + r.x) * 3, r.y + r.scale * 0.46, r.scale * 1.3, r.scale * 0.36, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        /* ============================================================
+         * 7. 螃蟹：横着走 / 挖洞 / 被浪吓跑
+         * ============================================================ */
+        const crabs = [];
+        const holes = [];
+
+        function sandXRange(y) {
+          const t = clamp((y - R.horizon) / (R.H - R.horizon), 0, 1);
+          return [shoreXAt(y) + maxReachAt(t) + 24, R.W - 30];
+        }
+
+        function makeCrab(i) {
+          const y = R.horizon + (R.H - R.horizon) * (0.35 + Math.random() * 0.6);
+          const [lo, hi] = sandXRange(y);
+          return {
+            x: lo + Math.pow(Math.random(), 1.7) * Math.max(40, hi - lo) * 0.85,
+            y,
+            dir: Math.random() < 0.5 ? -1 : 1,
+            speed: 18 + Math.random() * 30,
+            phase: Math.random() * 6.28,
+            state: 'wander',
+            timer: 1 + Math.random() * 3,
+            tx: 0,
+            ty: 0,
+            size: 0,
+            hole: null,
+            flee: 0,
+          };
+        }
+
+        function initCrabs() {
+          crabs.length = 0;
+          for (let i = 0; i < 5; i++) crabs.push(makeCrab(i));
+        }
+
+        function crabScale(y) {
+          const t = clamp((y - R.horizon) / (R.H - R.horizon), 0, 1);
+          return (0.55 + t * 1.2) * Math.min(R.W, R.H) * 0.023;
+        }
+
+        function updateCrabs(dt) {
+          if (!params.animals) return;
+          for (const c of crabs) {
+            c.size = crabScale(c.y);
+            const [lo, hi] = sandXRange(c.y);
+            const seg = segs[Math.min(SEG, Math.max(0, Math.round(((c.y - R.horizon) / (R.H - R.horizon)) * SEG)))];
+            const reachPx = seg ? seg.sx + seg.reach * maxReachAt(seg.t) : lo;
+
+            // 浪冲上来了 → 往右跑
+            if (reachPx > c.x - c.size * 1.6) {
+              c.flee = 1.1;
+            }
+            if (c.flee > 0) {
+              c.flee -= dt;
+              c.x += dt * (60 + c.size * 3);
+              c.state = 'flee';
+              c.dir = 1;
+            } else {
+              c.timer -= dt;
+              if (c.state === 'wander') {
+                if (c.x < lo + 6) c.dir = 1;
+                if (c.x > hi - 6) c.dir = -1;
+                c.x += c.dir * c.speed * dt * (0.6 + params.wind * 0.6);
+                c.y += Math.sin(time * 1.3 + c.phase) * dt * 3;
+                c.y = clamp(c.y, R.horizon + (R.H - R.horizon) * 0.3, R.H - 26);
+                if (c.timer <= 0) {
+                  c.state = Math.random() < 0.45 ? 'dig' : 'pause';
+                  c.timer = c.state === 'dig' ? 1.6 + Math.random() * 2.2 : 0.7 + Math.random() * 1.4;
+                  if (c.state === 'dig') {
+                    c.hole = { x: c.x, y: c.y + c.size * 0.3, r: c.size * 0.32, age: 0 };
+                    holes.push(c.hole);
+                    if (holes.length > 14) holes.shift();
+                  }
+                }
+              } else if (c.state === 'pause') {
+                if (c.timer <= 0) {
+                  c.state = 'wander';
+                  c.timer = 1.5 + Math.random() * 3;
+                }
+              } else if (c.state === 'dig') {
+                // 挖沙：飞舞的沙粒
+                if (Math.random() < dt * 14) {
+                  const a = -Math.PI * 0.5 + (Math.random() - 0.5) * 1.2;
+                  particles.push({
+                    x: c.x,
+                    y: c.y + c.size * 0.2,
+                    vx: Math.cos(a) * (20 + Math.random() * 40),
+                    vy: Math.sin(a) * (20 + Math.random() * 50),
+                    life: 0,
+                    ttl: 0.4 + Math.random() * 0.4,
+                    size: 1 + Math.random() * 2,
+                    kind: 'sand',
+                  });
+                }
+                if (c.timer <= 0) {
+                  c.state = 'wander';
+                  c.timer = 1.5 + Math.random() * 3;
+                }
+              }
+            }
+            c.x = clamp(c.x, lo, hi);
+            if (c.hole) {
+              c.hole.age += dt;
+              c.hole.r = Math.min(c.size * 0.9, c.hole.r + dt * c.size * 0.4);
+              if (c.hole.age > 16) {
+                const idx = holes.indexOf(c.hole);
+                if (idx >= 0) holes.splice(idx, 1);
+                c.hole = null;
+              }
+            }
+          }
+        }
+
+        function drawCrab(c) {
+          const s = c.size;
+          const step = Math.sin(time * 14 + c.phase) * (c.state === 'pause' ? 0.2 : 1);
+          ctx.save();
+          ctx.translate(c.x, c.y);
+          ctx.scale(c.dir, 1);
+
+          // 影子
+          ctx.fillStyle = 'rgba(90,52,28,0.22)';
+          ctx.beginPath();
+          ctx.ellipse(0, s * 0.55, s * 1.15, s * 0.42, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 腿（4 对）
+          ctx.strokeStyle = '#8f3d2a';
+          ctx.lineWidth = Math.max(1.1, s * 0.11);
+          ctx.lineCap = 'round';
+          for (let side = -1; side <= 1; side += 2) {
+            for (let i = 0; i < 4; i++) {
+              const bx = -s * 0.5 + i * s * 0.28;
+              const by = s * 0.12 + Math.abs(i - 1.5) * s * 0.05;
+              const sw = step * s * 0.16 * (i % 2 ? 1 : -1);
+              ctx.beginPath();
+              ctx.moveTo(bx, by);
+              ctx.quadraticCurveTo(bx + s * 0.22, by + s * 0.3 + sw, bx + s * 0.42, by + s * 0.5 + sw * 0.6);
+              ctx.stroke();
+            }
+          }
+
+          // 甲壳
+          const body = ctx.createLinearGradient(0, -s * 0.6, 0, s * 0.5);
+          body.addColorStop(0, '#ff9a63');
+          body.addColorStop(0.55, '#e2663f');
+          body.addColorStop(1, '#a8402a');
+          ctx.fillStyle = body;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, s * 0.95, s * 0.62, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 壳上的高光
+          ctx.fillStyle = 'rgba(255,224,190,0.35)';
+          ctx.beginPath();
+          ctx.ellipse(-s * 0.2, -s * 0.22, s * 0.42, s * 0.2, -0.3, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 两只大螯
+          for (let side = -1; side <= 1; side += 2) {
+            ctx.save();
+            ctx.translate(side * s * 0.82, -s * 0.1);
+            ctx.rotate(side * (0.5 + step * 0.08));
+            ctx.fillStyle = '#d95a36';
+            ctx.beginPath();
+            ctx.ellipse(s * 0.2, 0, s * 0.32, s * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#b8432a';
+            ctx.beginPath();
+            ctx.moveTo(s * 0.42, -s * 0.12);
+            ctx.lineTo(s * 0.66, -s * 0.02);
+            ctx.lineTo(s * 0.42, s * 0.1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          }
+
+          // 眼睛
+          for (let side = -1; side <= 1; side += 2) {
+            ctx.strokeStyle = '#7a2f20';
+            ctx.lineWidth = Math.max(1, s * 0.08);
+            ctx.beginPath();
+            ctx.moveTo(side * s * 0.18, -s * 0.45);
+            ctx.lineTo(side * s * 0.22, -s * 0.66);
+            ctx.stroke();
+            ctx.fillStyle = '#2a1610';
+            ctx.beginPath();
+            ctx.arc(side * s * 0.22, -s * 0.7, s * 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.beginPath();
+            ctx.arc(side * s * 0.2, -s * 0.73, s * 0.04, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.restore();
+        }
+
+        function drawHoles() {
+          for (const h of holes) {
+            const fade = clamp(1 - (h.age - 10) / 6, 0, 1);
+            // 洞口
+            ctx.fillStyle = `rgba(74,46,28,${0.42 * fade})`;
+            ctx.beginPath();
+            ctx.ellipse(h.x, h.y, h.r * 1.05, h.r * 0.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // 挖出来的沙堆
+            ctx.fillStyle = `rgba(216,178,132,${0.4 * fade})`;
+            ctx.beginPath();
+            ctx.ellipse(h.x, h.y - h.r * 0.22, h.r * 1.25, h.r * 0.45, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = `rgba(66,40,22,${0.5 * fade})`;
+            ctx.beginPath();
+            ctx.ellipse(h.x, h.y - h.r * 0.15, h.r * 0.66, h.r * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        /* ============================================================
+         * 8. 小鱼：水里游 / 偶尔跃出水面
+         * ============================================================ */
+        const fish = [];
+        const fishSplashes = [];
+
+        function initFish() {
+          fish.length = 0;
+          const rand = mulberry32(sceneSeed + 23);
+          for (let i = 0; i < 7; i++) {
+            const y = R.horizon + (0.28 + rand() * 0.62) * (R.H - R.horizon);
+            const sx = shoreXAt(y);
+            fish.push({
+              x: Math.max(26, sx - 40 - rand() * Math.min(320, sx * 0.7)),
+              y,
+              size: (5 + rand() * 9) * Math.min(R.W, R.H) / 900,
+              ang: rand() * 6.28,
+              speed: 14 + rand() * 26,
+              wig: rand() * 6.28,
+              jump: 2 + rand() * 8,
+              ph: rand() * 6.28,
+            });
+          }
+        }
+
+        function updateFish(dt) {
+          if (!params.animals) return;
+          for (const f of fish) {
+            f.jump -= dt;
+            f.wig += dt * (6 + f.speed * 0.2);
+            f.x += Math.cos(f.ang) * f.speed * dt;
+            f.y += Math.sin(f.ang) * f.speed * dt * 0.55;
+            f.ang += Math.sin(time * 0.8 + f.ph) * dt * 0.9;
+
+            const shore = shoreXAt(f.y) - 24;
+            if (f.x > shore) {
+              f.ang = Math.PI + (Math.random() - 0.5) * 0.6;
+              f.x = shore - 2;
+            }
+            if (f.x < 24) {
+              f.ang = (Math.random() - 0.5) * 0.6;
+              f.x = 26;
+            }
+            const top = R.horizon + 8;
+            if (f.y < top) {
+              f.ang = Math.abs(f.ang);
+              f.y = top;
+            }
+            if (f.y > R.H - 20) {
+              f.ang = -Math.abs(f.ang);
+              f.y = R.H - 22;
+            }
+
+            // 跃出水面（溅起水花环）
+            if (f.jump <= 0) {
+              f.jump = 4 + Math.random() * 9;
+              fishSplashes.push({ x: f.x, y: f.y, life: 0, ttl: 0.9, size: f.size * 2.2 });
+              spawnSpray(f.x, f.y, 5, 1.2, 40);
+            }
+          }
+          for (let i = fishSplashes.length - 1; i >= 0; i--) {
+            const s = fishSplashes[i];
+            s.life += dt;
+            if (s.life >= s.ttl) fishSplashes.splice(i, 1);
+          }
+        }
+
+        function drawFish() {
+          // 跃出水面留下的涟漪
+          for (const s of fishSplashes) {
+            const p = s.life / s.ttl;
+            const r = s.size * (1 + p * 3.2);
+            ctx.strokeStyle = `rgba(230,245,240,${((1 - p) * 0.4).toFixed(3)})`;
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.ellipse(s.x, s.y, r, r * 0.42, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          for (const f of fish) {
+            ctx.save();
+            ctx.translate(f.x, f.y);
+            ctx.rotate(f.ang);
+            const s = f.size;
+            // 头顶的暗影
+            ctx.fillStyle = 'rgba(20,60,64,0.2)';
+            ctx.beginPath();
+            ctx.ellipse(s * 0.2, s * 0.5, s * 1.4, s * 0.6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // 身体
+            const g = ctx.createLinearGradient(0, -s * 0.5, 0, s * 0.5);
+            g.addColorStop(0, '#eaf6f2');
+            g.addColorStop(0.5, '#8fc7c2');
+            g.addColorStop(1, '#3f7d80');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, s * 1.25, s * 0.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // 尾巴
+            const wag = Math.sin(f.wig) * 0.5;
+            ctx.fillStyle = '#6fa9a6';
+            ctx.beginPath();
+            ctx.moveTo(-s * 1.1, 0);
+            ctx.lineTo(-s * 1.8, -s * 0.55 + wag * s * 0.4);
+            ctx.lineTo(-s * 1.8, s * 0.55 + wag * s * 0.4);
+            ctx.closePath();
+            ctx.fill();
+            // 眼睛
+            ctx.fillStyle = '#16323a';
+            ctx.beginPath();
+            ctx.arc(s * 0.85, -s * 0.12, s * 0.12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+
+        /* ============================================================
+         * 9. 风：海沫拉丝 / 沙粒 / 草
+         * ============================================================ */
+        const foamStreaks = [];
+        const sandGrains = [];
+        const grass = [];
+
+        function initWind() {
+          foamStreaks.length = 0;
+          sandGrains.length = 0;
+          grass.length = 0;
+          const rand = mulberry32(sceneSeed + 41);
+          for (let i = 0; i < 60; i++) {
+            const y = R.horizon + Math.pow(rand(), 1.3) * (R.H - R.horizon);
+            const sx = shoreXAt(y);
+            foamStreaks.push({
+              x: sx - 20 - rand() * Math.min(280, sx * 0.6),
+              y,
+              len: 6 + rand() * 22,
+              sp: 8 + rand() * 26,
+              ph: rand() * 6.28,
+            });
+          }
+          for (let i = 0; i < 50; i++) {
+            sandGrains.push({ x: rand() * R.W, y: 0, sp: rand(), ph: rand() * 6.28 });
+          }
+          for (let i = 0; i < 0; i++) {
+            grass.push({
+              x: R.W * (0.93 + rand() * 0.05),
+              y: R.H * (0.72 + rand() * 0.2),
+              h: 26 + rand() * 44,
+              ph: rand() * 6.28,
+              blades: 4 + Math.floor(rand() * 4),
+            });
+          }
+        }
+
+        function updateWind(dt) {
+          for (const s of foamStreaks) {
+            s.x += s.sp * dt * (0.3 + params.wind) * 1.6;
+            const shore = shoreXAt(s.y);
+            if (s.x > shore - 8) s.x = shore - 60 - Math.random() * 200;
+          }
+          for (const gr of sandGrains) {
+            gr.sp += dt * (5 + params.wind * 20);
+            const t = (gr.ph + time * 0.02) % 1;
+            gr.y = R.horizon + (0.45 + t * 0.55) * (R.H - R.horizon);
+            gr.x += gr.sp * dt * (0.2 + params.wind);
+            const sx = shoreXAt(gr.y) + maxReachAt(t) + 10;
+            if (gr.x > R.W - 4 || gr.x < sx) gr.x = sx + Math.random() * (R.W - sx);
+          }
+        }
+
+        function drawWind() {
+          // 水面泡沫拉丝
+          ctx.save();
+          ctx.lineWidth = 1.2;
+          for (const s of foamStreaks) {
+            const a = 0.08 + 0.1 * (0.5 + 0.5 * Math.sin(time * 1.6 + s.ph));
+            ctx.strokeStyle = `rgba(255,250,244,${a.toFixed(3)})`;
+            ctx.beginPath();
+            ctx.moveTo(s.x, s.y);
+            ctx.lineTo(s.x + s.len, s.y + Math.sin(time * 1.2 + s.ph) * 1.5);
+            ctx.stroke();
+          }
+          ctx.restore();
+
+          // 沙滩上被风吹动的细沙
+          ctx.fillStyle = 'rgba(255,232,196,0.35)';
+          for (const gr of sandGrains) {
+            ctx.fillRect(gr.x, gr.y, 1.6, 1.2);
+          }
+
+          // 海滩草（随风摆）
+          for (const tuft of grass) {
+            for (let i = 0; i < tuft.blades; i++) {
+              const bend = Math.sin(time * (1.2 + i * 0.13) + tuft.ph) * (0.25 + params.wind * 0.9);
+              const bx = tuft.x + (i - tuft.blades / 2) * 5;
+              const by = tuft.y;
+              ctx.strokeStyle = `rgba(96,72,52,${0.5 + params.wind * 0.25})`;
+              ctx.lineWidth = 1.6;
+              ctx.beginPath();
+              ctx.moveTo(bx, by);
+              ctx.quadraticCurveTo(
+                bx + bend * 18,
+                by - tuft.h * 0.55,
+                bx + bend * 34 + Math.sin(i) * 4,
+                by - tuft.h
+              );
+              ctx.stroke();
+            }
+          }
+        }
+
+        function drawParticles() {
+          for (const p of particles) {
+            const a = clamp(1 - p.life / p.ttl, 0, 1);
+            if (p.kind === 'spray') {
+              ctx.fillStyle = `rgba(255,250,242,${(a * 0.75).toFixed(3)})`;
+            } else {
+              ctx.fillStyle = `rgba(214,172,120,${(a * 0.7).toFixed(3)})`;
+            }
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * (0.5 + a * 0.5), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        /* ============================================================
+         * 10. 后期与主循环
+         * ============================================================ */
+        let vignette = null;
+        let hazeGrad = null;
+        function buildVignette() {
+          const { W, H } = R;
+          vignette = ctx.createRadialGradient(
+            W * 0.42,
+            H * 0.45,
+            Math.min(W, H) * 0.2,
+            W * 0.5,
+            H * 0.5,
+            Math.max(W, H) * 0.82
+          );
+          vignette.addColorStop(0, 'rgba(0,0,0,0)');
+          vignette.addColorStop(0.62, 'rgba(60,20,30,0.12)');
+          vignette.addColorStop(1, 'rgba(30,8,16,0.55)');
+
+          hazeGrad = ctx.createLinearGradient(0, R.horizon - R.H * 0.055, 0, R.horizon + R.H * 0.06);
+          hazeGrad.addColorStop(0, 'rgba(255,190,150,0)');
+          hazeGrad.addColorStop(0.5, 'rgba(255,198,160,0.34)');
+          hazeGrad.addColorStop(1, 'rgba(255,180,140,0)');
+        }
+
+        const noiseTile = document.createElement('canvas');
+        let noisePattern = null;
+        function buildNoise() {
+          const s = 128;
+          noiseTile.width = s;
+          noiseTile.height = s;
+          const g = noiseTile.getContext('2d');
+          const img = g.createImageData(s, s);
+          for (let i = 0; i < img.data.length; i += 4) {
+            const v = (Math.random() * 255) | 0;
+            img.data[i] = v;
+            img.data[i + 1] = v;
+            img.data[i + 2] = v;
+            img.data[i + 3] = 255;
+          }
+          g.putImageData(img, 0, 0);
+          noisePattern = ctx.createPattern(noiseTile, 'repeat');
+        }
+
+        function drawGrain() {
+          if (!noisePattern) return;
+          ctx.save();
+          ctx.globalCompositeOperation = 'overlay';
+          ctx.globalAlpha = 0.05;
+          ctx.translate(-Math.random() * 128, -Math.random() * 128);
+          ctx.fillStyle = noisePattern;
+          ctx.fillRect(0, 0, R.W + 128, R.H + 128);
+          ctx.restore();
+        }
+
+        function update(dt) {
+          time += dt;
+          updateSwash(dt);
+          updateCrabs(dt);
+          updateFish(dt);
+          updateRocks(dt);
+          updateWind(dt);
+
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.life += dt;
+            p.vy += (p.kind === 'spray' ? 420 : 260) * dt;
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            if (p.life >= p.ttl) particles.splice(i, 1);
+          }
+        }
+
+        function render(dt) {
+          ctx.drawImage(base, 0, 0, R.W, R.H);
+          // 海天之间的暖雾，柔化那条硬邦邦的地平线
+          if (hazeGrad) {
+            ctx.fillStyle = hazeGrad;
+            ctx.fillRect(0, R.horizon - R.H * 0.055, R.W, R.H * 0.115);
+          }
+          drawWaves(dt);
+          drawGlitter();
+          drawWind();
+          drawWetSand(dt);
+          drawRocksFoam();
+          drawHoles();
+          if (params.animals) {
+            drawFish();
+            for (const c of crabs) drawCrab(c);
+          }
+          drawParticles();
+          ctx.fillStyle = vignette;
+          ctx.fillRect(0, 0, R.W, R.H);
+          drawGrain();
+        }
+
+        let last = 0;
+        let raf = 0;
+        function loop(ts) {
+          raf = requestAnimationFrame(loop);
+          if (!last) last = ts;
+          let dt = (ts - last) / 1000;
+          last = ts;
+          dt = clamp(dt, 0.001, 0.05);
+          if (params.paused) return;
+          update(dt);
+          render(dt);
+        }
+
+        function resize() {
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+          R.dpr = Math.min(2, window.devicePixelRatio || 1);
+          R.W = w;
+          R.H = h;
+          R.horizon = Math.round(h * 0.3);
+          cvs.width = Math.round(w * R.dpr);
+          cvs.height = Math.round(h * R.dpr);
+          ctx.setTransform(R.dpr, 0, 0, R.dpr, 0, 0);
+          buildSegments();
+          buildBase();
+          buildVignette();
+          initWaves();
+          initGlitter();
+          initCrabs();
+          initFish();
+          initWind();
+          holes.length = 0;
+          particles.length = 0;
+          marks.length = 0;
+          swashClock = 2.6;
+        }
+
+        // ---------- 交互 ----------
+        const hud = document.getElementById('hud');
+        const elWind = document.getElementById('wind');
+        const outWind = document.getElementById('outWind');
+        const elWave = document.getElementById('wave');
+        const outWave = document.getElementById('outWave');
+        const chipAnimals = document.getElementById('chipAnimals');
+        const chipHide = document.getElementById('chipHide');
+
+        elWind.addEventListener('input', () => {
+          params.wind = Number(elWind.value) / 100;
+          outWind.textContent = elWind.value;
+        });
+        elWave.addEventListener('input', () => {
+          params.wave = Number(elWave.value) / 100;
+          outWave.textContent = elWave.value;
+        });
+        chipAnimals.addEventListener('click', () => {
+          params.animals = !params.animals;
+          chipAnimals.setAttribute('aria-pressed', String(params.animals));
+        });
+        chipHide.addEventListener('click', () => hud.classList.add('hidden'));
+
+        window.addEventListener('keydown', (e) => {
+          if (e.code === 'Space') {
+            e.preventDefault();
+            params.paused = !params.paused;
+          } else if (e.key === 'h' || e.key === 'H') {
+            hud.classList.toggle('hidden');
+          }
+        });
+
+        // 点沙滩：螃蟹受惊跑开；点水面：小鱼散开
+        cvs.addEventListener('pointerdown', (e) => {
+          const x = e.clientX;
+          const y = e.clientY;
+          for (const c of crabs) {
+            if (Math.hypot(c.x - x, c.y - y) < 90) c.flee = 1.4;
+          }
+          for (const f of fish) {
+            if (Math.hypot(f.x - x, f.y - y) < 110) {
+              f.ang = Math.atan2(f.y - y, f.x - x);
+              f.speed = 80;
+            }
+          }
+        });
+
+        window.addEventListener('resize', resize);
+
+        // 初始化
+        buildNoise();
+        resize();
+        raf = requestAnimationFrame(loop);
+
+        // 供截图 / 调试
+        window.beachLab = {
+          params,
+          crabs,
+          fish,
+          setWind(v) {
+            params.wind = clamp(v, 0, 1);
+            elWind.value = String(Math.round(params.wind * 100));
+            outWind.textContent = elWind.value;
+          },
+          setWave(v) {
+            params.wave = clamp(v, 0.4, 1.7);
+            elWave.value = String(Math.round(params.wave * 100));
+            outWave.textContent = elWave.value;
+          },
+        };
+      })();
+    </script>
+  </body>
+</html>

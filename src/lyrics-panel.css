@@ -1,0 +1,1434 @@
+/* SONORA 歌词面板（独立浮层样式）。默认隐藏，调用 open() 才显示。
+   class 前缀统一 lyrics-panel-*；不依赖 style.css，深紫毛玻璃、半透明、可拖动、
+   移动端全宽；播放器与粒子动画在浮层之下继续运行（播放不中断）。 */
+
+.lyrics-panel,
+.lyrics-panel * {
+  box-sizing: border-box;
+}
+
+/* 面板不依赖 style.css：按钮/输入的字体也自己声明。 */
+.lyrics-panel button,
+.lyrics-panel input,
+.lyrics-panel textarea {
+  font-family: inherit;
+}
+
+/* 根层：默认不可见也不拦截交互；打开后铺满视口并居中卡片。 */
+.lyrics-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 120; /* 高于导航栏(60) / 播放器，低于光标拖尾(999) */
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 4vh, 48px) clamp(14px, 4vw, 40px);
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  color: #f1eefc;
+  -webkit-font-smoothing: antialiased;
+}
+
+.lyrics-panel.lyrics-panel-open {
+  display: flex;
+}
+
+/* hidden 兜底优先：保证状态异常时也不会出现一个无法关闭的面板。 */
+.lyrics-panel[hidden] {
+  display: none;
+}
+
+/* 遮罩：半透明毛玻璃，画面仍然透出来。 */
+.lyrics-panel-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(58% 50% at 50% 42%, rgba(139, 117, 255, 0.16), transparent 70%),
+    rgba(8, 7, 18, 0.56);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-animation: lyrics-panel-fade 0.26s ease both;
+  animation: lyrics-panel-fade 0.26s ease both;
+}
+
+/* 卡片：居中浮层，毛玻璃 + 深紫渐变边框。 */
+.lyrics-panel-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(640px, 100%);
+  max-height: min(88vh, 820px);
+  padding: 22px clamp(18px, 3vw, 28px) 20px;
+  /* 设置项增多后矮屏可滚动；横向裁掉，保持圆角不被内容顶破。 */
+  overflow-x: hidden;
+  overflow-y: auto;
+  background:
+    linear-gradient(160deg, rgba(42, 34, 74, 0.9), rgba(16, 14, 32, 0.94));
+  border: 1px solid rgba(181, 160, 255, 0.24);
+  border-radius: 22px;
+  box-shadow:
+    0 30px 90px rgba(3, 2, 12, 0.72),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 0 60px rgba(139, 117, 255, 0.16);
+  -webkit-backdrop-filter: blur(26px) saturate(1.2);
+  backdrop-filter: blur(26px) saturate(1.2);
+  -webkit-animation: lyrics-panel-rise 0.3s cubic-bezier(0.2, 0.8, 0.28, 1) both;
+  animation: lyrics-panel-rise 0.3s cubic-bezier(0.2, 0.8, 0.28, 1) both;
+  will-change: transform;
+}
+
+.lyrics-panel-card.lyrics-panel-dragging {
+  cursor: grabbing;
+  box-shadow:
+    0 40px 110px rgba(3, 2, 12, 0.8),
+    0 0 70px rgba(139, 117, 255, 0.22);
+}
+
+/* ---- 头部（拖动把手）---- */
+.lyrics-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.lyrics-panel-card.lyrics-panel-dragging .lyrics-panel-header {
+  cursor: grabbing;
+}
+
+.lyrics-panel-heading {
+  min-width: 0;
+}
+
+.lyrics-panel-kicker {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: #a493d8;
+}
+
+.lyrics-panel-title {
+  margin: 6px 0 4px;
+  font-size: clamp(19px, 2.4vw, 24px);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  background: linear-gradient(112deg, #fdfbff 10%, #d8c9ff 52%, #9fd8ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.lyrics-panel-subtitle {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #9d97b8;
+}
+
+.lyrics-panel-close {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: 19px;
+  line-height: 1;
+  color: #cfc6ea;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(181, 160, 255, 0.22);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.lyrics-panel-close:hover {
+  color: #fff;
+  background: rgba(181, 160, 255, 0.2);
+  border-color: rgba(181, 160, 255, 0.5);
+  transform: rotate(90deg);
+}
+
+/* ---- 编辑区 ---- */
+/* 面板内容变多后卡片整体内部滚动：编辑区保持自然高度（不要被 flex 压到低于
+   textarea 的 min-height，否则提示文字会溢出并和下方「歌词显示」叠在一起）。 */
+.lyrics-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.lyrics-panel-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: #b8b0d4;
+}
+
+.lyrics-panel-textarea {
+  width: 100%;
+  min-height: 150px;
+  flex: 1;
+  padding: 14px 16px;
+  resize: vertical;
+  font-family: "Cascadia Code", "JetBrains Mono", Consolas, "PingFang SC", "Microsoft YaHei", monospace;
+  font-size: 13px;
+  line-height: 1.75;
+  letter-spacing: 0.02em;
+  color: #ede9ff;
+  background: rgba(8, 7, 20, 0.62);
+  border: 1px solid rgba(181, 160, 255, 0.2);
+  border-radius: 14px;
+  outline: none;
+  caret-color: #b5a0ff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.lyrics-panel-textarea::placeholder {
+  color: #6f6a8a;
+}
+
+.lyrics-panel-textarea:focus {
+  background: rgba(10, 8, 24, 0.78);
+  border-color: rgba(181, 160, 255, 0.55);
+  box-shadow: 0 0 0 3px rgba(139, 117, 255, 0.16);
+}
+
+.lyrics-panel-textarea::-webkit-scrollbar {
+  width: 8px;
+}
+
+.lyrics-panel-textarea::-webkit-scrollbar-thumb {
+  background: rgba(181, 160, 255, 0.28);
+  border-radius: 8px;
+}
+
+.lyrics-panel-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: #8480a0;
+}
+
+/* ---- 歌词显示设置（模式 / 位置）---- */
+.lyrics-panel-display {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(8, 7, 20, 0.42);
+  border: 1px solid rgba(181, 160, 255, 0.16);
+  border-radius: 14px;
+}
+
+.lyrics-panel-display-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.lyrics-panel-display-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #d9d2f2;
+}
+
+.lyrics-panel-display-note {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #7f79a0;
+  text-align: right;
+}
+
+.lyrics-panel-display-hint {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: #7f79a0;
+}
+
+.lyrics-panel-display-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lyrics-panel-display-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lyrics-panel-display-label {
+  flex: 0 0 34px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #a9a2c6;
+}
+
+.lyrics-panel-segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(181, 160, 255, 0.16);
+  border-radius: 16px;
+}
+
+.lyrics-panel-segmented-button {
+  flex: 1 1 auto;
+  min-height: 28px;
+  padding: 0 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #9d97b8;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lyrics-panel-segmented-button:hover {
+  color: #fff;
+  background: rgba(181, 160, 255, 0.14);
+}
+
+.lyrics-panel-segmented-button.is-active {
+  color: #1c1733;
+  background: linear-gradient(118deg, #d9ccff 0%, #b5a0ff 52%, #8fd0f2 100%);
+  box-shadow: 0 4px 14px rgba(139, 117, 255, 0.3);
+}
+
+/* ---- 歌词颜色（调色盘）：彩虹渐变板 + 点阵 + 白色圆环标记 + 已保存色块 ---- */
+.lyrics-panel-color-row {
+  align-items: flex-start;
+  padding-top: 2px;
+}
+
+.lyrics-panel-color {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lyrics-panel-color-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+/* 当前颜色预览：有自定义色时是纯色圆点，跟随曲风时是曲风渐变缩略。 */
+.lyrics-panel-color-preview {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 50%;
+  background: linear-gradient(115deg, #f4f8ff 0%, #c3dcff 52%, #8fd0f2 100%);
+  box-shadow: 0 0 10px rgba(168, 220, 255, 0.35);
+}
+
+.lyrics-panel-color-value {
+  font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: #d9d2f2;
+}
+
+.lyrics-panel-color-value.is-mood {
+  font-family: inherit;
+  letter-spacing: 0.08em;
+  color: #9d97b8;
+}
+
+/* 「跟随曲风」重置按钮：清空自定义色，回到随曲风变化的默认渐变。 */
+.lyrics-panel-color-reset {
+  min-height: 26px;
+  padding: 0 12px;
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #cfc6ea;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(181, 160, 255, 0.24);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.lyrics-panel-color-reset:hover {
+  color: #fff;
+  background: rgba(181, 160, 255, 0.18);
+  border-color: rgba(181, 160, 255, 0.5);
+}
+
+.lyrics-panel-color-reset.is-active {
+  color: #1c1733;
+  background: linear-gradient(118deg, #d9ccff 0%, #b5a0ff 52%, #8fd0f2 100%);
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(139, 117, 255, 0.28);
+}
+
+/* 调色盘组件（src/color-palette.js）：板面自己画彩虹渐变 + 点阵，标记绝对定位。 */
+.color-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.color-palette-board {
+  position: relative;
+  width: 100%;
+  height: 88px;
+  overflow: hidden;
+  border-radius: 16px;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  outline: none;
+  /* 底图：横向色相 0→360 彩虹，叠一层“上亮下暗”的白/黑渐变模拟亮度 78%→38%。 */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.08) 46%, rgba(0, 0, 0, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      #ff6b7a 0%,
+      #ffb066 14%,
+      #f7ef6b 28%,
+      #74e08a 42%,
+      #5fd7f0 57%,
+      #6f8bff 72%,
+      #b06bff 86%,
+      #ff6bd6 100%
+    );
+  box-shadow:
+    0 8px 24px rgba(3, 2, 12, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+}
+
+.color-palette-board:focus-visible {
+  box-shadow:
+    0 0 0 2px rgba(140, 219, 201, 0.9),
+    0 8px 24px rgba(3, 2, 12, 0.5);
+}
+
+/* 点阵覆盖（参考截图）：细密白点提质感，不拦指针事件。 */
+.color-palette-dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.62) 1px, rgba(255, 255, 255, 0) 1.4px);
+  background-size: 9px 9px;
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+/* 白色圆环标记：内圈填充当前颜色，位置由组件按 x/y 比例写入。 */
+.color-palette-marker {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  background: var(--color-palette-marker, transparent);
+  box-shadow:
+    0 0 0 1px rgba(8, 7, 20, 0.55),
+    0 4px 12px rgba(3, 2, 12, 0.55);
+  pointer-events: none;
+  transition: left 0.09s linear, top 0.09s linear, background-color 0.15s ease;
+}
+
+.color-palette[data-empty="true"] .color-palette-marker {
+  opacity: 0;
+}
+
+.color-palette.is-dragging .color-palette-marker {
+  transition: none;
+}
+
+/* 已保存色块：一排圆形色点，点击直接应用；× 删除（悬停/键盘聚焦显形）。 */
+.color-palette-saved {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.color-palette-saved[data-empty="true"]::before {
+  content: "选色后自动保存在这里（最多 8 个）";
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: #6f6a8a;
+}
+
+.color-palette-swatch {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.26);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(3, 2, 12, 0.45);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.color-palette-swatch:hover {
+  transform: translateY(-2px) scale(1.06);
+  border-color: rgba(255, 255, 255, 0.62);
+}
+
+.color-palette-swatch.is-active {
+  border-color: #fff;
+  box-shadow:
+    0 0 0 2px rgba(8, 7, 20, 0.55),
+    0 0 14px rgba(255, 255, 255, 0.45);
+}
+
+.color-palette-swatch-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  font-size: 11px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(24, 20, 44, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.color-palette-swatch:hover .color-palette-swatch-remove,
+.color-palette-swatch:focus-visible .color-palette-swatch-remove {
+  opacity: 1;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* 触屏没有 hover：删除按钮常显，避免无法删除已保存颜色。 */
+@media (hover: none) {
+  .color-palette-swatch-remove {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* ---- 快捷操作 ---- */
+.lyrics-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.lyrics-panel-demo,
+.lyrics-panel-import,
+.lyrics-panel-clear,
+.lyrics-panel-apply {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #ded7f6;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(181, 160, 255, 0.24);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.lyrics-panel-demo:hover,
+.lyrics-panel-import:hover,
+.lyrics-panel-clear:hover {
+  color: #fff;
+  background: rgba(181, 160, 255, 0.16);
+  border-color: rgba(181, 160, 255, 0.48);
+  transform: translateY(-1px);
+}
+
+.lyrics-panel-demo:active,
+.lyrics-panel-import:active,
+.lyrics-panel-clear:active,
+.lyrics-panel-apply:active {
+  transform: translateY(0) scale(0.985);
+}
+
+.lyrics-panel-button-icon {
+  font-size: 13px;
+  color: #b5a0ff;
+}
+
+/* 真实 input 藏在按钮后面，只由按钮触发。 */
+.lyrics-panel-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- 底部：状态 + 清空 / 应用 ---- */
+.lyrics-panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.lyrics-panel-status {
+  flex: 1 1 200px;
+  min-width: 0;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #9d97b8;
+}
+
+.lyrics-panel-status[hidden] {
+  display: none;
+}
+
+.lyrics-panel-status[data-tone="success"] {
+  color: #98e6cf;
+}
+
+.lyrics-panel-status[data-tone="error"],
+.lyrics-panel-status.is-error {
+  color: #ff9fb0;
+}
+
+.lyrics-panel-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.lyrics-panel-apply.lyrics-panel-apply--primary {
+  color: #1c1733;
+  background: linear-gradient(118deg, #d9ccff 0%, #b5a0ff 48%, #8fd0f2 100%);
+  border-color: transparent;
+  box-shadow: 0 8px 26px rgba(139, 117, 255, 0.34);
+}
+
+.lyrics-panel-apply.lyrics-panel-apply--primary:hover {
+  color: #151128;
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 32px rgba(139, 117, 255, 0.46);
+}
+
+.lyrics-panel-meta {
+  margin: 0;
+  text-align: center;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: #6f6a8a;
+}
+
+/* 键盘可访问性：面板内焦点环与深色主题一致。 */
+.lyrics-panel button:focus-visible,
+.lyrics-panel textarea:focus-visible {
+  outline: 2px solid #8cdbc9;
+  outline-offset: 3px;
+}
+
+/* ---- 动画 ---- */
+@keyframes lyrics-panel-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 入场只动 opacity/scale，transform 留给拖拽（两者互不覆盖）。 */
+@keyframes lyrics-panel-rise {
+  from {
+    opacity: 0;
+    scale: 0.975;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+/* 拖动后卡片靠 translate transform 定位；入场动画只动 opacity/scale，不会覆盖它。 */
+
+/* ---- 移动端：全宽贴底，输入区更高 ---- */
+@media (max-width: 640px) {
+  .lyrics-panel {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .lyrics-panel-card {
+    width: 100%;
+    max-height: 92vh;
+    padding: 20px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+    border-radius: 22px 22px 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    gap: 12px;
+  }
+
+  .lyrics-panel-header {
+    cursor: default;
+  }
+
+  .lyrics-panel-title {
+    font-size: 20px;
+  }
+
+  .lyrics-panel-textarea {
+    min-height: 136px;
+    font-size: 13px;
+  }
+
+  .lyrics-panel-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .lyrics-panel-demo,
+  .lyrics-panel-import {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .lyrics-panel-footer {
+    gap: 10px;
+  }
+
+  .lyrics-panel-footer-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .lyrics-panel-clear {
+    flex: 0 0 auto;
+  }
+
+  .lyrics-panel-apply {
+    flex: 1;
+  }
+
+  .lyrics-panel-display {
+    padding: 11px 12px;
+  }
+
+  .lyrics-panel-display-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .lyrics-panel-display-label {
+    flex: none;
+  }
+
+  .lyrics-panel-segmented {
+    width: 100%;
+  }
+
+  .lyrics-panel-segmented-button {
+    flex: 1;
+    padding: 0 8px;
+  }
+
+  /* 颜色：调色盘占满一行，板面加高一点方便手指拖动选色。 */
+  .lyrics-panel-color-row {
+    gap: 6px;
+  }
+
+  .color-palette-board {
+    height: 96px;
+  }
+
+  .color-palette-swatch {
+    width: 28px;
+    height: 28px;
+  }
+
+  .lyrics-panel-meta {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lyrics-panel-backdrop,
+  .lyrics-panel-card {
+    -webkit-animation: none;
+    animation: none;
+  }
+
+  .lyrics-panel-close,
+  .lyrics-panel-demo,
+  .lyrics-panel-import,
+  .lyrics-panel-clear,
+  .lyrics-panel-apply,
+  .lyrics-panel-color-reset,
+  .color-palette-marker,
+  .color-palette-swatch,
+  .color-palette-swatch-remove {
+    transition: none;
+  }
+}
+
+/* ---------- 歌词显示卡片右上角：当前颜色 / 模式的歌词小样预览 ---------- */
+.lyrics-panel-display-aside {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.lyrics-panel-display-preview {
+  --lyrics-preview-gradient: linear-gradient(115deg, #f4f8ff 0%, #c3dcff 52%, #8fd0f2 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  padding: 7px 12px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.035);
+  transform-origin: 100% 50%;
+  transition: transform 0.28s ease, border-color 0.28s ease, background 0.28s ease;
+}
+
+/* 3D 倾斜模式下预览也跟着倾斜，跟真实歌词层一致 */
+.lyrics-panel-display-preview.is-tilt3d {
+  transform: perspective(320px) rotateX(13deg) rotateZ(-2deg);
+  border-color: rgba(139, 117, 255, 0.42);
+  background: rgba(139, 117, 255, 0.08);
+}
+
+.lyrics-panel-preview-line {
+  font-family: var(--lyrics-font, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  background: var(--lyrics-preview-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.lyrics-panel-preview-line.is-sub {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  opacity: 0.72;
+}
+
+/* ---- 预览跟随「字号」三档变化（小肥鱼 / 肥鱼 / 大肥鱼）---- */
+.lyrics-panel-display-preview[data-preview-size='small'] .lyrics-panel-preview-line {
+  font-size: 11px;
+}
+.lyrics-panel-display-preview[data-preview-size='small'] .lyrics-panel-preview-line.is-sub {
+  font-size: 8.5px;
+}
+.lyrics-panel-display-preview[data-preview-size='large'] .lyrics-panel-preview-line {
+  font-size: 16px;
+}
+.lyrics-panel-display-preview[data-preview-size='large'] .lyrics-panel-preview-line.is-sub {
+  font-size: 12px;
+}
+
+/* ---- 预览跟随「模式」变化：每种样式给一个最有辨识度的小特效 ---- */
+
+/* 弹跳字：主行轻轻上下跳 */
+.lyrics-panel-display-preview[data-preview-mode='bounce'] .lyrics-panel-preview-line:not(.is-sub) {
+  animation: panel-preview-bounce 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+@keyframes panel-preview-bounce {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-3px); }
+}
+
+/* 竖排：主行竖着写 */
+.lyrics-panel-display-preview[data-preview-mode='vertical'] .lyrics-panel-preview-line:not(.is-sub) {
+  writing-mode: vertical-rl;
+  letter-spacing: 0.12em;
+  line-height: 1.15;
+}
+
+/* 故障：抖动 + 色散 */
+.lyrics-panel-display-preview[data-preview-mode='glitch'] .lyrics-panel-preview-line:not(.is-sub) {
+  animation: panel-preview-glitch 1.1s steps(2, end) infinite;
+}
+@keyframes panel-preview-glitch {
+  0%, 92%, 100% { transform: translate(0); filter: none; }
+  94% { transform: translate(-1.5px, 1px); filter: hue-rotate(35deg) saturate(1.6); }
+  96% { transform: translate(1.5px, -1px); filter: hue-rotate(-35deg) saturate(1.6); }
+}
+
+/* 打字机：模拟光标闪烁 */
+.lyrics-panel-display-preview[data-preview-mode='typewriter'] .lyrics-panel-preview-line:not(.is-sub)::after {
+  content: '▍';
+  margin-left: 1px;
+  opacity: 0.85;
+  animation: panel-preview-caret 0.9s steps(1, end) infinite;
+}
+@keyframes panel-preview-caret {
+  0%, 50% { opacity: 0.85; }
+  51%, 100% { opacity: 0.1; }
+}
+
+/* 漂浮：整体上下轻浮（drift） */
+.lyrics-panel-display-preview[data-preview-mode='drift'] .lyrics-panel-preview-line:not(.is-sub) {
+  animation: panel-preview-drift 2.4s ease-in-out infinite;
+}
+@keyframes panel-preview-drift {
+  0%, 100% { transform: translateY(0); opacity: 0.92; }
+  50% { transform: translateY(-2.5px); opacity: 1; }
+}
+
+/* 摆荡：轻微旋转（swing） */
+.lyrics-panel-display-preview[data-preview-mode='swing'] .lyrics-panel-preview-line:not(.is-sub) {
+  animation: panel-preview-swing 2.6s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+@keyframes panel-preview-swing {
+  0%, 100% { transform: rotate(-1.6deg); }
+  50% { transform: rotate(1.6deg); }
+}
+
+/* 律动：跟着节拍缩放（pulse） */
+.lyrics-panel-display-preview[data-preview-mode='pulse'] .lyrics-panel-preview-line:not(.is-sub) {
+  animation: panel-preview-pulse 1.15s ease-in-out infinite;
+}
+@keyframes panel-preview-pulse {
+  0%, 100% { transform: scale(1); }
+  45% { transform: scale(1.07); }
+}
+
+/* 散点：字距拉开、微微抖动（scatter） */
+.lyrics-panel-display-preview[data-preview-mode='scatter'] .lyrics-panel-preview-line:not(.is-sub) {
+  letter-spacing: 0.26em;
+  animation: panel-preview-scatter 1.8s ease-in-out infinite;
+}
+@keyframes panel-preview-scatter {
+  0%, 100% { transform: translate(0, 0); opacity: 0.9; }
+  50% { transform: translate(0.6px, -1px); opacity: 1; }
+}
+
+/* 描边：预览只留轮廓感（outline） */
+.lyrics-panel-display-preview[data-preview-mode='outline'] .lyrics-panel-preview-line:not(.is-sub) {
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0.6px rgba(168, 220, 255, 0.9);
+  filter: none;
+}
+
+/* 其余非经典样式：主行加一层柔光，表示特效已生效 */
+.lyrics-panel-display-preview:not(:is([data-preview-mode='classic'], [data-preview-mode=''])) .lyrics-panel-preview-line:not(.is-sub) {
+  filter: drop-shadow(0 0 6px rgba(139, 117, 255, 0.55));
+}
+
+/* 3D 倾斜时覆盖上面这些轻量动画，保持倾斜姿态 */
+.lyrics-panel-display-preview.is-tilt3d .lyrics-panel-preview-line {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lyrics-panel-display-preview .lyrics-panel-preview-line {
+    animation: none;
+  }
+}
+
+.lyrics-panel-preview-value {
+  margin-top: 2px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: #7f79a0;
+  font-variant-numeric: tabular-nums;
+}
+
+.lyrics-panel-display-preview.is-tilt3d .lyrics-panel-preview-value {
+  color: #a89cff;
+}
+
+@media (max-width: 560px) {
+  .lyrics-panel-display-preview {
+    padding: 5px 9px;
+  }
+  .lyrics-panel-preview-line {
+    font-size: 11px;
+  }
+  .lyrics-panel-preview-line.is-sub {
+    font-size: 9px;
+  }
+}
+
+/* ---------- 聊天身份编辑（仅聊天歌词样式显示） ---------- */
+.lyrics-panel-chat {
+  margin: 16px 0 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.lyrics-panel-chat[hidden] {
+  display: none;
+}
+
+.lyrics-panel-chat-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.lyrics-panel-chat-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #e9e6f6;
+}
+
+.lyrics-panel-chat-note {
+  font-size: 10px;
+  color: #7e849d;
+}
+
+.lyrics-panel-chat-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.lyrics-panel-chat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lyrics-panel-chat-avatar {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.18s, transform 0.18s;
+}
+
+.lyrics-panel-chat-avatar:hover {
+  border-color: rgba(190, 180, 255, 0.55);
+  transform: translateY(-1px);
+}
+
+.lyrics-panel-chat-avatar-preview {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  color: #dfe3f5;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.lyrics-panel-chat-avatar-preview.has-image {
+  background-color: #11131d;
+}
+
+.lyrics-panel-chat-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lyrics-panel-chat-label {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #8b90a8;
+}
+
+.lyrics-panel-chat-name {
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  color: #eeecf8;
+  font-size: 12px;
+  outline: none;
+}
+
+.lyrics-panel-chat-name:focus {
+  border-color: rgba(190, 180, 255, 0.5);
+}
+
+.lyrics-panel-chat-hint {
+  margin: 10px 0 0;
+  font-size: 10px;
+  color: #747a92;
+}
+
+.lyrics-panel-chat-reset {
+  margin-top: 8px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  background: transparent;
+  color: #aeb3c8;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.lyrics-panel-chat-reset:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+/* ---------- 聊天设置：折叠按钮 + 说话比例 ---------- */
+.lyrics-panel-chat-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lyrics-panel-chat-toggle .lyrics-panel-chat-title {
+  flex: 0 0 auto;
+}
+
+.lyrics-panel-chat-summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: #7d839b;
+}
+
+.lyrics-panel-chat-caret {
+  flex: 0 0 auto;
+  color: #8d93aa;
+  transition: transform 0.2s ease;
+}
+
+.lyrics-panel-chat-toggle[aria-expanded='true'] .lyrics-panel-chat-caret {
+  transform: rotate(180deg);
+}
+
+.lyrics-panel-chat-body {
+  margin-top: 12px;
+}
+
+.lyrics-panel-chat-body[hidden] {
+  display: none;
+}
+
+.lyrics-panel-chat-ratio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.lyrics-panel-chat-ratio-label {
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #8b90a8;
+}
+
+.lyrics-panel-chat-ratio-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.lyrics-panel-chat-bias {
+  padding: 5px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #aeb3c8;
+  font-size: 10px;
+  cursor: pointer;
+  transition: 0.18s;
+}
+
+.lyrics-panel-chat-bias:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.lyrics-panel-chat-bias.is-active {
+  border-color: rgba(181, 160, 255, 0.55);
+  background: rgba(181, 160, 255, 0.16);
+  color: #e6ddff;
+}
+
+/* ---- 歌词面板顶部：大肥鱼互动吉祥物（参考 dsh-pet 桌宠） ---- */
+/* 吉祥物挂在卡片右上角（绝对定位，不占布局流，也不挤压标题） */
+.mascot-pet-slot {
+  position: absolute;
+  top: 10px;
+  right: 74px;
+  z-index: 3;
+  width: 68px;
+  height: 78px;
+  pointer-events: none;
+}
+
+.mascot-pet {
+  position: relative;
+  width: 68px;
+  height: 78px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  outline: none;
+  transform: translateX(var(--pet-shift-x, 0px));
+  transition: transform 0.3s ease;
+}
+
+.mascot-pet:focus-visible {
+  outline: 2px solid rgba(200, 185, 255, 0.75);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+/* 身体：承载图片与跟随指针的偏移 */
+.mascot-pet-body {
+  width: 100%;
+  height: 100%;
+  transform: translate(var(--pet-look-x, 0px), var(--pet-look-y, 0px))
+    scale(var(--pet-scale, 1));
+  transform-origin: 50% 92%;
+  transition: transform 0.22s ease;
+  animation: pet-float 3.6s ease-in-out infinite;
+}
+
+.mascot-pet-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 16px rgba(4, 6, 18, 0.55));
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 图片缺失时的兜底 */
+.mascot-pet-body.is-fallback::after {
+  content: '🐟';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 40px;
+}
+
+.mascot-pet-body.is-fallback .mascot-pet-img {
+  display: none;
+}
+
+/* 待机漂浮 */
+@keyframes pet-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -5px;
+  }
+}
+
+/* 被戳 / 换字号时蹦一下 */
+.mascot-pet.is-bouncing .mascot-pet-body {
+  animation: pet-bounce 0.62s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes pet-bounce {
+  0% {
+    translate: 0 0;
+    scale: 1;
+  }
+  35% {
+    translate: 0 -14px;
+    scale: 1.08 0.94;
+  }
+  60% {
+    translate: 0 0;
+    scale: 0.94 1.08;
+  }
+  100% {
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+/* 指针靠近：微微前倾，显得在看你 */
+.mascot-pet.is-curious .mascot-pet-body {
+  animation-play-state: running;
+}
+
+/* 长时间无操作：趴下睡觉（下沉 + 变矮） */
+.mascot-pet.is-sleeping .mascot-pet-body {
+  translate: 0 6px;
+  scale: 1 0.9;
+  opacity: 0.82;
+  animation-play-state: paused;
+  transition: translate 0.6s ease, scale 0.6s ease, opacity 0.6s ease;
+}
+
+/* 台词气泡：贴在角色下方、横向展开，宽一点才不会挤成竖条 */
+.mascot-pet-bubble {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 26px);
+  left: auto;
+  bottom: auto;
+  transform: translateY(-6px);
+  width: 260px;
+  max-width: 260px;
+  padding: 7px 11px;
+  background: rgba(14, 12, 28, 0.97);
+  border: 1px solid rgba(176, 161, 219, 0.34);
+  border-radius: 12px;
+  box-shadow: 0 10px 26px rgba(3, 5, 14, 0.6);
+  backdrop-filter: blur(10px);
+  color: #e6e1f6;
+  font-size: 11.5px;
+  line-height: 1.55;
+  /* 傲娇台词偏长，允许换行 */
+  white-space: normal;
+  text-align: left;
+  z-index: 5;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+/* 气泡侧边的小尖角省略，居中浮层已足够清晰 */
+.mascot-pet-bubble::after {
+  display: none;
+}
+
+.mascot-pet-bubble.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 减少动态效果：停掉漂浮与弹跳 */
+@media (prefers-reduced-motion: reduce) {
+  .mascot-pet-body {
+    animation: none;
+  }
+  .mascot-pet.is-bouncing .mascot-pet-body {
+    animation: none;
+  }
+}
+
+/* 移动端：小一点，避免挡住标题 */
+@media (max-width: 760px) {
+  .mascot-pet {
+    width: 54px;
+    height: 62px;
+  }
+  .mascot-pet-bubble {
+    max-width: 150px;
+    font-size: 11px;
+  }
+}
+
+/* 「换一句」按钮：让大肥鱼念情景台词 */
+/* 「换一句」按钮：贴在角色左侧（气泡在下方，二者不重叠） */
+.mascot-pet-more {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 14px;
+  left: auto;
+  transform: none;
+  padding: 1px 8px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: #b9c6e8;
+  background: rgba(20, 26, 44, 0.82);
+  border: 1px solid rgba(139, 165, 255, 0.32);
+  border-radius: 999px;
+  cursor: pointer;
+  pointer-events: auto;
+  white-space: nowrap;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.mascot-pet-more:hover {
+  color: #e6eeff;
+  border-color: rgba(139, 165, 255, 0.6);
+  background: rgba(30, 38, 62, 0.92);
+}
+
+.mascot-pet-more:focus-visible {
+  outline: 2px solid var(--mint, #8cdbc9);
+  outline-offset: 2px;
+}

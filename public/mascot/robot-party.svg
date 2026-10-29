@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <ellipse cx="60" cy="107" rx="28" ry="7" fill="rgba(0,0,0,.18)" />
+  <line x1="60" y1="24" x2="60" y2="38" stroke="#7f8db0" stroke-width="4" stroke-linecap="round" />
+  <circle cx="60" cy="19" r="7" fill="#ffe07a" />
+  <rect x="26" y="38" width="68" height="46" rx="15" fill="#cdd9f4" />
+  <rect x="35" y="48" width="50" height="26" rx="11" fill="#1b2236" />
+  <path d="M44 61 q5 -6 10 0" stroke="#ffe07a" stroke-width="3.2" fill="none" stroke-linecap="round" />
+  <path d="M66 61 q5 -6 10 0" stroke="#ffe07a" stroke-width="3.2" fill="none" stroke-linecap="round" />
+  <path d="M52 80 q8 7 16 0" stroke="#7f8db0" stroke-width="3" fill="none" stroke-linecap="round" />
+  <rect x="38" y="88" width="44" height="13" rx="6.5" fill="#aebcdf" />
+  <rect x="28" y="92" width="8" height="15" rx="4" fill="#aebcdf" />
+  <rect x="84" y="92" width="8" height="15" rx="4" fill="#aebcdf" />
+  <circle cx="36" cy="84" r="4" fill="#ffcf7a" />
+  <circle cx="84" cy="84" r="4" fill="#ffcf7a" />
+  <path d="M10 26 l1.6 5 5 1.6 -5 1.6 -1.6 5 -1.6 -5 -5 -1.6 5 -1.6z" fill="#ffe07a" />
+  <path d="M100 22 l1.4 4.4 4.4 1.4 -4.4 1.4 -1.4 4.4 -1.4 -4.4 -4.4 -1.4 4.4 -1.4z" fill="#9fe6ff" />
+  <path d="M104 88 l1.4 4.4 4.4 1.4 -4.4 1.4 -1.4 4.4 -1.4 -4.4 -4.4 -1.4 4.4 -1.4z" fill="#ffb3a7" />
+  <circle cx="16" cy="88" r="3" fill="#c9b6ff" />
+</svg>

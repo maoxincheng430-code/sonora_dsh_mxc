@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <g transform="rotate(-8 60 70)">
+    <ellipse cx="60" cy="107" rx="28" ry="7" fill="rgba(0,0,0,.18)" />
+    <path d="M28 44 L20 18 L46 30 Z" fill="#f3b562" stroke="#e09a45" stroke-width="3" stroke-linejoin="round" />
+    <path d="M92 44 L100 18 L74 30 Z" fill="#f3b562" stroke="#e09a45" stroke-width="3" stroke-linejoin="round" />
+    <path d="M31 38 L26 24 L40 30 Z" fill="#ffd9b0" />
+    <path d="M89 38 L94 24 L80 30 Z" fill="#ffd9b0" />
+    <path d="M60 24c-20 0-34 14-34 34 0 22 15 40 34 40s34-18 34-40c0-20-14-34-34-34z" fill="#f7c873" />
+    <path d="M42 58 q4 -5 8 0" stroke="#3b2a20" stroke-width="3.4" fill="none" stroke-linecap="round" />
+    <path d="M70 58 q4 -5 8 0" stroke="#3b2a20" stroke-width="3.4" fill="none" stroke-linecap="round" />
+    <path d="M60 67 l-4 4 h8 z" fill="#e0808a" />
+    <path d="M53 77 q7 6 14 0" stroke="#3b2a20" stroke-width="3" fill="none" stroke-linecap="round" />
+    <ellipse cx="37" cy="73" rx="6" ry="3.4" fill="#ffb3a7" opacity=".7" />
+    <ellipse cx="83" cy="73" rx="6" ry="3.4" fill="#ffb3a7" opacity=".7" />
+  </g>
+  <path d="M8 50 h14 M6 60 h12 M8 70 h10" stroke="#ffd9a0" stroke-width="3" stroke-linecap="round" opacity=".85" />
+  <path d="M100 50 h12 M102 60 h12 M104 70 h10" stroke="#ffd9a0" stroke-width="3" stroke-linecap="round" opacity=".4" />
+</svg>

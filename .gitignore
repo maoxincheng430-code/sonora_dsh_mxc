@@ -1,0 +1,83 @@
+node_modules/
+dist/
+test-results/
+.playwright/
+
+# 便携 MariaDB（约 90MB 下载 + 数据目录），只保留在本机
+.mysql/
+# API 运行时临时目录（如后续做磁盘暂存）
+server/.data/
+
+# 曲库 / 用户数据：每个人保存在自己本机（浏览器 IndexedDB 或本机 MySQL），
+# 仓库里只有表结构（server/schema.sql），绝不含任何歌曲、播放记录或用户数据。
+server/data/
+server/media/
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+# MySQL 数据目录与导出（防止误提交 .mysql/ 之外的副本）
+data/mysql/
+mysql-data/
+dump/
+*.sql.gz
+
+# 浏览器 IndexedDB / localStorage 导出的备份
+*indexeddb*.json
+*localstorage*.json
+sonora-backup*.json
+
+# 网易云 / QQ 音乐抓取工具的依赖（本地开发用，不入库）
+tools/netease/node_modules/
+tools/qq-api/node_modules/
+
+# 本地开发日志
+.dev-server.log
+.api-server.log
+
+# QQ 音乐登录态（含 Cookie 与加密会话密钥，绝不能入库）
+.qq-session.json
+tools/qq-api/.auth-state/
+tools/netease/.cookie
+
+# 本地 AI / 工具链配置与技能包，不属于项目本身
+.claude/
+.dsh/
+.vscode/
+.idea/
+AGENTS.md
+opus-video-repos/
+
+# 本地验证脚本与音频分析中间产物
+.verify/
+
+# 本地预览图 / 临时截图 / 打包备份（体积大且非源码）
+*preview*.png
+rain-compare.png
+rain-water-zoom.png
+*.zip
+
+# 音频素材带版权风险且体积大：仓库不放，缺失时自动退回 WebAudio 合成音
+public/audio/*.mp3
+public/audio/*.wav
+public/audio/*.ogg
+public/audio/*.m4a
+public/audio/*.flac
+
+# 版权歌词：仓库不放真实歌曲的 LRC，换成自己的再提交
+public/lyrics/*.lrc
+public/lyrics/*.txt
+
+# 临时文件与散落在根目录的截图（截图请放 docs/ 并压缩）
+.tmp-*
+*.tmp
+/*.png
+/*.jpg
+/*.jpeg
+
+# 系统与编辑器杂项
+.DS_Store
+Thumbs.db
+*.log
+.tmp-build/
+.tmp-desktop/
