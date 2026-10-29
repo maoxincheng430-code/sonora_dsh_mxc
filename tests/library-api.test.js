@@ -75,8 +75,11 @@ test('probeServer 在 db 不可用时返回 false', async (t) => {
 
 test('probeServer 超时后返回 false（AbortController）', async (t) => {
   // 用一个「永不 resolve、只在 abort 时 reject」的 fetch 模拟挂起的服务端。
-  // 注意：必须让 abort 回调同步走完，否则 Node 测试框架会先结束事件循环
-  // （CI 上会报 "Promise resolution is still pending but the event loop has already resolved"）。
+  //
+  // 这里刻意不用真实计时器：CI 的事件循环比本地快很多，25ms 的超时还没触发，
+  // Node 就会认为事件循环已空并结束测试，报
+  // "Promise resolution is still pending but the event loop has already resolved"。
+  // 改成 fake timers 后，超时完全可控，与机器速度无关。
   mockFetch(t, (entry) => new Promise((resolve, reject) => {
     const signal = entry.init.signal;
     const fail = () => {
@@ -90,9 +93,13 @@ test('probeServer 超时后返回 false（AbortController）', async (t) => {
     }
     signal.addEventListener('abort', fail, { once: true });
   }));
-  const started = Date.now();
-  assert.equal(await probeServer('http://127.0.0.1:8787', 25), false);
-  assert.ok(Date.now() - started < 5000, '应快速超时返回');
+
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+
+  const pending = probeServer('http://127.0.0.1:8787', 25);
+  // 推进时钟，让 createAbort 里的 setTimeout 触发 → controller.abort()
+  t.mock.timers.tick(30);
+  assert.equal(await pending, false);
 });
 
 test('open() 探测成功返回 true；失败抛中文错误', async (t) => {

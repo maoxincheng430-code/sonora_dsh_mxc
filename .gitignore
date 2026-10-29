@@ -96,3 +96,7 @@ _launch_test.*
 # CI 调试日志
 _ci_log.txt
 ci-*.txt
+
+# CI 日志
+_ci*.txt
+ci-log*.txt

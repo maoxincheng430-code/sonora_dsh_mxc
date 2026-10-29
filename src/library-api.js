@@ -32,8 +32,12 @@ const resolveFetch = (preferred) => {
 const createAbort = (timeoutMs) => {
   if (typeof AbortController !== 'function') return { signal: undefined, clear: () => {} };
   const controller = new AbortController();
+  // 注意：这里**不能**对 timer 调用 unref()。
+  // unref 会让定时器不阻止进程退出，在 CI（事件循环很快）里会导致
+  // abort 还没触发事件循环就结束了，测试报
+  // "Promise resolution is still pending but the event loop has already resolved"。
+  // 调用方都在 finally 里 clear()，正常路径不会泄漏。
   const timer = setTimeout(() => controller.abort(), Math.max(1, Number(timeoutMs) || 1));
-  if (timer && typeof timer.unref === 'function') timer.unref();
   return {
     signal: controller.signal,
     clear: () => clearTimeout(timer),
