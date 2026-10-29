@@ -80,7 +80,21 @@ npm run lyrics:auto -- --dir "/path/to/Music" --force     # 已有歌词也重�
 
 ### 在线音乐（QQ 音乐 / 网易云音乐 / 酷狗音乐）
 
-点顶部导航栏「在线音乐」打开面板，面板顶部切换三个音源：
+> **需要额外一步**：在线音乐依赖 `tools/` 下的两个独立小服务，主项目的 `npm install` **不会**带上它们。
+> 不装的话，点开「在线音乐」只会看到 `Failed to fetch`。
+>
+> **Windows 用户**：双击 `点这里启动喵/安装在线音乐依赖.cmd` 一次即可。
+>
+> **命令行用户**：
+> ```sh
+> npm run qq:setup        # 安装 QQ 音乐服务依赖（tools/qq-api）
+> npm run netease:setup   # 安装网易云服务依赖（tools/netease）
+> npm run server          # 启动主 API 时自动拉起这两个服务，无需单独开
+> ```
+>
+> 纯前端功能（粒子、歌词、番茄钟、桌宠、氛围场景、本地曲库）**不需要**这步。
+
+装好之后点顶部导航栏「在线音乐」打开面板，顶部切换三个音源：
 
 - **QQ 音乐**：沿用 Folia 同款方案（[Folia](https://github.com/chthollyphile/folia-major)），用 [`@yakult-green-tea/qq-music-api`](https://www.npmjs.com/package/@yakult-green-tea/qq-music-api)（MIT）处理设备身份与扫码登录，服务在 `tools/qq-api/`（端口 3200）。
 - **网易云音乐**：复用 [NeteaseCloudMusicApi](https://github.com/Binaryify/NeteaseCloudMusicApi)（MIT，装在 `tools/netease/`，端口 3202），支持扫码登录与**手机号验证码登录**；不登录也能搜索、试听一部分歌。
@@ -88,11 +102,7 @@ npm run lyrics:auto -- --dir "/path/to/Music" --force     # 已有歌词也重�
 
 QQ 与网易云的登录态都会持久化（QQ 用加密文件，网易云存 cookie 文件，均在各自 `.auth-state/` 下、已 gitignore），重启服务不用重新登录。播放链接统一由服务端代理成本地流（`/api/<provider>/stream`），支持 Range 拖动；歌词优先取平台官方歌词，没有时回落到本地多源歌词库。
 
-```sh
-npm run qq:setup        # 首次：安装 QQ 音乐服务依赖
-npm run netease:setup   # 首次：安装网易云服务依赖（tools/netease）
-npm run server          # 启动主 API 时自动拉起 QQ / 网易云服务，无需单独开
-```
+**登录用的是你自己的账号**：仓库里不含任何人的登录凭据，需要各自扫码。登录态只存在本机，不会上传。
 
 相关接口（都只监听 127.0.0.1）：
 

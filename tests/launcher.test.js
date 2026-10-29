@@ -4,7 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 
 // 启动脚本放在「点这里启动喵」子目录下，方便用户一眼找到。
 const LAUNCHER_DIR = '点这里启动喵';
-const LAUNCHERS = ['启动网站.cmd', '启动桌面版.cmd'];
+const LAUNCHERS = ['启动网站.cmd', '启动桌面版.cmd', '安装在线音乐依赖.cmd'];
 const launcherUrl = (name) => new URL(`../${LAUNCHER_DIR}/${name}`, import.meta.url);
 
 for (const name of LAUNCHERS) {
@@ -48,4 +48,20 @@ test('网站启动脚本包含依赖安装与端口检测逻辑', () => {
   assert.match(text, /npm install/, '首次运行应自动安装依赖');
   assert.match(text, /5173/, '应检测 5173 端口');
   assert.match(text, /npm run dev/, '应调用 npm run dev');
+});
+
+// 在线音乐（QQ / 网易云）挂在 tools/ 下的独立子项目里，主项目的 npm install
+// 不会带上它们；没有这步，别人 clone 后点「在线音乐」只会看到 Failed to fetch。
+test('在线音乐安装脚本会装齐 tools 下两个服务的依赖', () => {
+  const text = readFileSync(launcherUrl('安装在线音乐依赖.cmd'), 'latin1');
+  assert.match(text, /cd \/d "%~dp0\.\."/, '应回到项目根目录');
+  assert.match(text, /tools\\qq-api/, '应覆盖 QQ 音乐服务');
+  assert.match(text, /tools\\netease/, '应覆盖网易云服务');
+  // 两个子项目都要各自 npm install（pushd 进入目录再装）
+  assert.equal(
+    (text.match(/call npm install/g) ?? []).length,
+    3,
+    '主项目 + 两个子服务各安装一次',
+  );
+  assert.match(text, /node_modules/, '应检测依赖是否已存在，避免重复安装');
 });
