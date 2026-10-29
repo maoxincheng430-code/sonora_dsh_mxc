@@ -92,3 +92,7 @@ tools/netease/*.mjs
 _*.log
 _*.err
 _launch_test.*
+
+# CI 调试日志
+_ci_log.txt
+ci-*.txt

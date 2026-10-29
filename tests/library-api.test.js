@@ -74,12 +74,21 @@ test('probeServer 在 db 不可用时返回 false', async (t) => {
 });
 
 test('probeServer 超时后返回 false（AbortController）', async (t) => {
+  // 用一个「永不 resolve、只在 abort 时 reject」的 fetch 模拟挂起的服务端。
+  // 注意：必须让 abort 回调同步走完，否则 Node 测试框架会先结束事件循环
+  // （CI 上会报 "Promise resolution is still pending but the event loop has already resolved"）。
   mockFetch(t, (entry) => new Promise((resolve, reject) => {
-    entry.init.signal.addEventListener('abort', () => {
+    const signal = entry.init.signal;
+    const fail = () => {
       const error = new Error('aborted');
       error.name = 'AbortError';
       reject(error);
-    });
+    };
+    if (signal.aborted) {
+      fail();
+      return;
+    }
+    signal.addEventListener('abort', fail, { once: true });
   }));
   const started = Date.now();
   assert.equal(await probeServer('http://127.0.0.1:8787', 25), false);
