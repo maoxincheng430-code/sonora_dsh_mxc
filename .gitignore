@@ -57,12 +57,12 @@ rain-compare.png
 rain-water-zoom.png
 *.zip
 
-# 音频素材带版权风险且体积大：仓库不放，缺失时自动退回 WebAudio 合成音
-public/audio/*.mp3
+# 音频素材：public/audio/ 下的环境录音随仓库提供（雨/雷/海滩/图书馆，共约 3.3MB），
+# 保证 clone 下来就能听到真实录音而不是合成音。
+# 只忽略用户临时丢进来的其它格式，避免误提交大文件。
 public/audio/*.wav
-public/audio/*.ogg
-public/audio/*.m4a
 public/audio/*.flac
+public/audio/*.aiff
 
 # 版权歌词：仓库不放真实歌曲的 LRC，换成自己的再提交
 public/lyrics/*.lrc
