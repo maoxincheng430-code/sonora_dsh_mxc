@@ -243,7 +243,21 @@ export function createOnlinePanel(options = {}) {
         await startQrLogin();
       }
     } catch (error) {
-      setStatus(`${current.label}连接失败：${error.message}`);
+      // 「Failed to fetch」几乎总是本地服务没起来：
+      // tools/qq-api 或 tools/netease 的依赖没装，或者没跑 npm run server。
+      // 翻译成用户能照着做的说明，否则他只会看到一个英文报错。
+      const offline = /failed to fetch|networkerror|load failed|network request failed/i.test(
+        String(error?.message || ''),
+      );
+      if (offline) {
+        setStatus(`${current.label} · 本地服务未启动`);
+        showError(
+          '在线音乐需要本地服务支持：Windows 双击「点这里启动喵/安装在线音乐依赖.cmd」装依赖，再双击「启动网站.cmd」；'
+            + '命令行用户执行 npm run qq:setup && npm run netease:setup，然后 npm run server。',
+        );
+      } else {
+        setStatus(`${current.label}连接失败：${error.message}`);
+      }
     }
   }
 

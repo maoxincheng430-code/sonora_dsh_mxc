@@ -370,13 +370,26 @@ export function createAmbience(options = {}) {
     const task = fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // 仓库里不带录音（public/audio/*.mp3 已 gitignore），SFC/dev server 对缺失
+        // 的静态资源常返回 200 + text/html（index.html 兜底），直接塞给
+        // decodeAudioData 会抛 EncodingError，控制台留下红色报错。
+        // 先按 content-type 拦一道，缺失时安静回落到合成音。
+        const type = String(res.headers?.get?.('content-type') || '');
+        if (type && !/^audio\/|octet-stream/i.test(type)) {
+          throw new Error(`not audio: ${type}`);
+        }
         return res.arrayBuffer();
       })
       .then(
         (buffer) =>
           new Promise((resolve, reject) => {
             try {
-              audioCtx.decodeAudioData(buffer, resolve, reject);
+              // 解码失败时回调 reject；用 try/catch 兜住同步抛出的那部分
+              audioCtx.decodeAudioData(
+                buffer,
+                resolve,
+                () => reject(new Error('decode failed')),
+              );
             } catch (_e) {
               reject(_e);
             }

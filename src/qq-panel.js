@@ -163,8 +163,22 @@ export function createQQPanel(options = {}) {
       tipEl.textContent = `当前通道：${CHANNEL_LABELS[channel] || channel}，扫码后请在手机上确认。`;
       pollTimer = setInterval(pollQr, POLL_INTERVAL);
     } catch (error) {
-      setStatus(`获取二维码失败：${error.message}`);
-      tipEl.textContent = '请确认本地 qq-api 服务已启动（npm run server 会自动拉起）。';
+      // 「Failed to fetch」对用户没有任何指导意义——它几乎总是意味着本地的
+      // services 没起来（tools/qq-api 依赖没装，或没跑 npm run server）。
+      // 这里翻译成可以直接照做的提示。
+      const offline = /failed to fetch|networkerror|load failed|network request failed/i.test(
+        String(error?.message || ''),
+      );
+      if (offline) {
+        setStatus('连不上本地服务，暂时拿不到二维码');
+        tipEl.textContent =
+          '在线音乐需要先启动本地服务：Windows 双击「点这里启动喵/安装在线音乐依赖.cmd」装依赖，再双击「启动网站.cmd」；命令行用户跑 npm run qq:setup 然后 npm run server。';
+        tipEl.dataset.offline = '1';
+      } else {
+        setStatus(`获取二维码失败：${error.message}`);
+        tipEl.textContent = '请确认本地 qq-api 服务已启动（npm run server 会自动拉起）。';
+        delete tipEl.dataset.offline;
+      }
     }
   }
 
