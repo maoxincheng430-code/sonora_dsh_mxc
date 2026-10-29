@@ -81,3 +81,14 @@ Thumbs.db
 *.log
 .tmp-build/
 .tmp-desktop/
+
+# 个人调试脚本（抓歌词用，含具体歌名，不属于项目本身）
+tools/netease/*.cjs
+tools/netease/*.mjs
+!tools/netease/package.json
+!tools/netease/package-lock.json
+
+# 临时测试输出
+_*.log
+_*.err
+_launch_test.*

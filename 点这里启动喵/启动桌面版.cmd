@@ -1,5 +1,6 @@
 @echo off
-cd /d "%~dp0"
+rem Script lives in a subfolder; go up to the project root.
+cd /d "%~dp0.."
 where node >nul 2>nul
 if errorlevel 1 goto no_node
 if exist node_modules goto check_electron

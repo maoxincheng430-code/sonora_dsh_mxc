@@ -1,5 +1,6 @@
 @echo off
-cd /d "%~dp0"
+rem Script lives in a subfolder; go up to the project root.
+cd /d "%~dp0.."
 rem Use a project-local temp dir for Vite / esbuild.
 if not exist ".tmp-build" mkdir ".tmp-build"
 set "TEMP=%cd%\.tmp-build"
